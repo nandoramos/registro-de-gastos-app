@@ -124,3 +124,29 @@ export const financialAccount = pgTable(
     ),
   ],
 );
+
+export const expenseCategory = pgTable(
+  "expense_category",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    systemKey: text("system_key"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("expense_category_user_idx").on(table.userId),
+    uniqueIndex("expense_category_user_system_key_unique").on(
+      table.userId,
+      table.systemKey,
+    ),
+    check("expense_category_name_not_blank", sql`btrim(${table.name}) <> ''`),
+  ],
+);

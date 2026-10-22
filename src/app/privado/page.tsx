@@ -30,12 +30,20 @@ export default async function PrivateHome() {
           Tu sesión está activa. La carga de gastos y el resumen mensual estarán
           disponibles en los próximos pasos.
         </p>
-        <Link
-          href="/privado/cuentas"
-          className="mt-8 inline-flex min-h-12 items-center rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
-        >
-          Configurar cuentas
-        </Link>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/privado/cuentas"
+            className="inline-flex min-h-12 items-center rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            Configurar cuentas
+          </Link>
+          <Link
+            href="/privado/categorias"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+          >
+            Configurar categorías
+          </Link>
+        </div>
       </section>
     </main>
   );

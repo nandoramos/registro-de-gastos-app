@@ -1,6 +1,6 @@
 # Registro de Gastos
 
-App personal privada. Están implementados el [ticket #2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2) y el [ticket #3: crear y renombrar cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3). La carga de gastos y los reportes se implementarán en tickets posteriores.
+App personal privada. Están implementados el [ticket #2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2), el [ticket #3: crear y renombrar cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3) y el [ticket #4: categorías iniciales y ampliables](https://github.com/nandoramos/registro-de-gastos-app/issues/4). La carga de gastos y los reportes se implementarán en tickets posteriores.
 
 ## Ejecutar localmente
 
@@ -11,7 +11,7 @@ Requiere Node.js 22.12 o posterior y una base PostgreSQL dedicada al proyecto (l
 3. Configurar un cliente OAuth de tipo **Web application** en Google Cloud, con redirect URI `http://localhost:3000/api/auth/callback/google`. Usar la misma URL base en `BETTER_AUTH_URL`. Para el proyecto OAuth en modo de prueba, habilitar la cuenta propia como usuario de prueba.
 4. Completar `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_ALLOWED_SUB`. Este último es el identificador estable OIDC `sub` de la cuenta autorizada, no el correo. Puede consultarse de forma privada mediante [OAuth Playground de Google](https://developers.google.com/oauthplayground/), solicitando únicamente identidad (`openid email profile`) y consultando el userinfo de OpenID Connect. Copiar solo el `sub` al archivo local; no guardar las respuestas ni los tokens en el repositorio. La app no tiene un modo de «permitir a cualquiera» para obtenerlo.
 5. Generar un secreto aleatorio de al menos 32 caracteres para `BETTER_AUTH_SECRET` y guardarlo solo en el entorno privado. Completar `DATABASE_URL` con la conexión PostgreSQL (TLS para Neon).
-6. Revisar las migraciones y ejecutar `npm run db:migrate` **solo sobre la base elegida para esta app**. Crean las tablas de autenticación y cuentas financieras; no se ejecutan automáticamente en build o al iniciar el servidor.
+6. Revisar las migraciones y ejecutar `npm run db:migrate` **solo sobre la base elegida para esta app**. Crean las tablas de autenticación, cuentas financieras y categorías; no se ejecutan automáticamente en build o al iniciar el servidor.
 7. Ejecutar `npm run dev` y abrir `http://localhost:3000`.
 
 No se han configurado credenciales reales, aplicado migraciones a Neon ni desplegado esta aplicación. Sin configuración válida, el acceso privado falla de forma cerrada y la pantalla de ingreso muestra un mensaje genérico.
@@ -42,6 +42,7 @@ Se usa TDD por comportamiento: escribir un test en la frontera acordada, observa
 - La consulta de autorización filtra conjuntamente por usuario de la sesión, proveedor y subject permitido. Un `user_id` del cliente no concede acceso.
 - Las futuras rutas y operaciones deben obtener la identidad mediante la misma frontera de autorización y filtrar sus consultas por ese usuario. No alcanza con proteger un layout ni con comprobar que existe una cookie.
 - Las cuentas financieras se almacenan separadas de las cuentas OAuth, pertenecen al usuario de la sesión y admiten únicamente UYU o USD. Todavía no contienen saldos ni movimientos.
+- Las categorías iniciales se crean de forma idempotente para cada usuario. Las categorías propias y los cambios de nombre quedan aislados por el usuario derivado de la sesión; la identidad estable de «Casa Nueva» no depende de su nombre visible.
 
 Decisiones de arquitectura: [ADR-0003](docs/adr/0003-acceso-privado-con-google.md). [Guía oficial de Google en Better Auth](https://better-auth.com/docs/authentication/google) y [configuración de sesiones](https://better-auth.com/docs/concepts/session-management).
 
