@@ -164,12 +164,22 @@ export const sourceEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     sourceType: text("source_type").$type<"manual">().notNull(),
+    status: text("status")
+      .$type<"pending" | "registered">()
+      .notNull()
+      .default("registered"),
     originalPayload: jsonb("original_payload")
       .$type<Record<string, unknown>>()
       .notNull(),
+    interpretation: jsonb("interpretation")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    issues: jsonb("issues").$type<string[]>().notNull().default([]),
     receivedAt: timestamp("received_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   },
   (table) => [
     index("source_event_user_idx").on(table.userId),

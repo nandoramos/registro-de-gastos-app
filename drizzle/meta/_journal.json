@@ -29,6 +29,13 @@
       "when": 1792711583303,
       "tag": "0003_funny_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792712051590,
+      "tag": "0004_eager_bloodaxe",
+      "breakpoints": true
     }
   ]
 }
