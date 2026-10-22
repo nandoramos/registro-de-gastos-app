@@ -5,6 +5,11 @@ Lee `docs/PROJECT.md` antes de proponer cambios.
 ## Modo de trabajo
 Este es tanto un proyecto personal como un ejercicio de aprendizaje con Codex y los skills de Matt Pocock. Explica primero el objetivo de cada cambio y por qué se propone. Prefiere decisiones explícitas antes de implementar suposiciones. Avanza con cambios pequeños y verificables; no construyas funcionalidades fuera del MVP v0.1 salvo pedido expreso. Para decisiones abiertas, pregunta o usa los skills de definición acordados en lugar de inventar requisitos.
 
+## Desarrollo con TDD
+- Seguir rojo → verde → refactor por comportamiento: escribir primero una prueba, observar su fallo por el motivo esperado e implementar el mínimo para pasarla.
+- Probar las fronteras acordadas (lógica compartida, parser, autorización y recorrido de interfaz), no detalles internos.
+- Ejecutar las pruebas del archivo afectado y typecheck durante los ciclos; ejecutar la suite completa al finalizar.
+
 ## Arquitectura y calidad
 - Stack decidido: Next.js + TypeScript, PostgreSQL + Drizzle, Tailwind/shadcn/ui.
 - Monolito modular: rutas HTTP delgadas, lógica de negocio separada, parsers puros testeables.
