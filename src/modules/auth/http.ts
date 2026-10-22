@@ -1,7 +1,7 @@
 import type { authorizeSession } from "./access";
 
-type Access = Awaited<ReturnType<typeof authorizeSession>>;
-type GetAccess = (headers: Headers) => Promise<Access>;
+export type Access = Awaited<ReturnType<typeof authorizeSession>>;
+export type GetAccess = (headers: Headers) => Promise<Access>;
 const privateHeaders = { "Cache-Control": "no-store" };
 
 function denial(access: Access): Response | undefined {

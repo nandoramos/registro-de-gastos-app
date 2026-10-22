@@ -1,11 +1,13 @@
 import {
   boolean,
+  check,
   index,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const user = pgTable("auth_user", {
   id: text("id").primaryKey(),
@@ -90,4 +92,35 @@ export const verification = pgTable(
       .defaultNow(),
   },
   (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
+);
+
+export const financialAccount = pgTable(
+  "financial_account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind").$type<"bank" | "cash">().notNull(),
+    currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("financial_account_user_idx").on(table.userId),
+    check("financial_account_name_not_blank", sql`btrim(${table.name}) <> ''`),
+    check(
+      "financial_account_kind_allowed",
+      sql`${table.kind} in ('bank', 'cash')`,
+    ),
+    check(
+      "financial_account_currency_allowed",
+      sql`${table.currency} in ('UYU', 'USD')`,
+    ),
+  ],
 );
