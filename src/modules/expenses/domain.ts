@@ -45,7 +45,7 @@ type ValidationResult =
     }
   | { ok: false; error: ExpenseValidationError };
 
-function object(input: unknown): Record<string, unknown> {
+function asRecord(input: unknown): Record<string, unknown> {
   return typeof input === "object" && input !== null
     ? (input as Record<string, unknown>)
     : {};
@@ -76,7 +76,7 @@ function decimalAmount(value: unknown): string | undefined {
 }
 
 export function adaptManualExpense(input: unknown): ValidationResult {
-  const value = object(input);
+  const value = asRecord(input);
   const original: Record<string, unknown> = {
     operationDate: value.operationDate,
     ...(value.operationTime !== undefined

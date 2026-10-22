@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
-import { getAccess, getAuthRuntime } from "@/modules/auth/server";
+import { requireAuthorizedPage } from "@/modules/auth/page";
+import { getAuthRuntime } from "@/modules/auth/server";
 import { getExpenseDetail } from "@/modules/expenses/service";
 
 export const dynamic = "force-dynamic";
@@ -12,14 +12,7 @@ export default async function ExpenseDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  let access;
-  try {
-    access = await getAccess(await headers());
-  } catch {
-    redirect("/login?error=unavailable");
-  }
-  if (access.status === "unauthenticated") redirect("/login");
-  if (access.status === "forbidden") redirect("/login?error=access");
+  const access = await requireAuthorizedPage();
 
   let expense;
   try {

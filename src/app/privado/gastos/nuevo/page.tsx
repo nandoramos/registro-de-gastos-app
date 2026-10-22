@@ -1,23 +1,16 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ExpenseForm } from "@/components/expense-form";
 import { SignOutButton } from "@/components/auth-buttons";
-import { getAccess, getAuthRuntime } from "@/modules/auth/server";
+import { requireAuthorizedPage } from "@/modules/auth/page";
+import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
 import { listCategories } from "@/modules/categories/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewExpensePage() {
-  let access;
-  try {
-    access = await getAccess(await headers());
-  } catch {
-    redirect("/login?error=unavailable");
-  }
-  if (access.status === "unauthenticated") redirect("/login");
-  if (access.status === "forbidden") redirect("/login?error=access");
+  const access = await requireAuthorizedPage();
 
   let accounts;
   let categories;

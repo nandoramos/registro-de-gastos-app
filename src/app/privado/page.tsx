@@ -1,18 +1,9 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { getAccess } from "@/modules/auth/server";
+import { requireAuthorizedPage } from "@/modules/auth/page";
 import { SignOutButton } from "@/components/auth-buttons";
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 export default async function PrivateHome() {
-  let access;
-  try {
-    access = await getAccess(await headers());
-  } catch {
-    redirect("/login?error=unavailable");
-  }
-  if (access.status === "unauthenticated") redirect("/login");
-  if (access.status === "forbidden") redirect("/login?error=access");
+  await requireAuthorizedPage();
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-6 py-8 sm:px-12 sm:py-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-7">
