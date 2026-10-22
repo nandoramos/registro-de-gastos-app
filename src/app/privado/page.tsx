@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAccess } from "@/modules/auth/server";
 import { SignOutButton } from "@/components/auth-buttons";
+import Link from "next/link";
 export const dynamic = "force-dynamic";
 export default async function PrivateHome() {
   let access;
@@ -29,6 +30,12 @@ export default async function PrivateHome() {
           Tu sesión está activa. La carga de gastos y el resumen mensual estarán
           disponibles en los próximos pasos.
         </p>
+        <Link
+          href="/privado/cuentas"
+          className="mt-8 inline-flex min-h-12 items-center rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+        >
+          Configurar cuentas
+        </Link>
       </section>
     </main>
   );

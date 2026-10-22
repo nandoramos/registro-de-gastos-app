@@ -43,16 +43,25 @@ export async function accountsCollectionResponse<T extends PgQueryResultHKT>(
     if (request.method === "POST") {
       const validation = validateAccountCreation(await readJson(request));
       if (!validation.ok) {
-        return Response.json({ error: validation.error }, { status: 422, headers });
+        return Response.json(
+          { error: validation.error },
+          { status: 422, headers },
+        );
       }
       return Response.json(
         await createAccount(db, access.userId, validation.value),
         { status: 201, headers },
       );
     }
-    return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405, headers });
+    return Response.json(
+      { error: "METHOD_NOT_ALLOWED" },
+      { status: 405, headers },
+    );
   } catch {
-    return Response.json({ error: "SERVICE_UNAVAILABLE" }, { status: 503, headers });
+    return Response.json(
+      { error: "SERVICE_UNAVAILABLE" },
+      { status: 503, headers },
+    );
   }
 }
 
@@ -66,11 +75,17 @@ export async function accountResourceResponse<T extends PgQueryResultHKT>(
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
     if (request.method !== "PATCH") {
-      return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405, headers });
+      return Response.json(
+        { error: "METHOD_NOT_ALLOWED" },
+        { status: 405, headers },
+      );
     }
     const validation = validateAccountRename(await readJson(request));
     if (!validation.ok) {
-      return Response.json({ error: validation.error }, { status: 422, headers });
+      return Response.json(
+        { error: validation.error },
+        { status: 422, headers },
+      );
     }
     const account = await renameAccount(
       db,
@@ -78,9 +93,13 @@ export async function accountResourceResponse<T extends PgQueryResultHKT>(
       accountId,
       validation.value.name,
     );
-    if (!account) return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    if (!account)
+      return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     return Response.json(account, { headers });
   } catch {
-    return Response.json({ error: "SERVICE_UNAVAILABLE" }, { status: 503, headers });
+    return Response.json(
+      { error: "SERVICE_UNAVAILABLE" },
+      { status: 503, headers },
+    );
   }
 }

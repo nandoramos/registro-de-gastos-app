@@ -3,7 +3,10 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { AccountCurrency, AccountKind, AccountView } from "./domain";
 
-export type AccountsDatabase<T extends PgQueryResultHKT> = PgDatabase<T, typeof schema>;
+export type AccountsDatabase<T extends PgQueryResultHKT> = PgDatabase<
+  T,
+  typeof schema
+>;
 
 const accountSelection = {
   id: schema.financialAccount.id,

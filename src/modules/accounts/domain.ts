@@ -21,20 +21,36 @@ export function validateAccountCreation(input: unknown): ValidationResult<{
   currency: AccountCurrency;
 }> {
   const value = typeof input === "object" && input !== null ? input : {};
-  const name = "name" in value && typeof value.name === "string" ? value.name.trim() : "";
-  if (name.length === 0 || name.length > 80) return { ok: false, error: "INVALID_NAME" };
+  const name =
+    "name" in value && typeof value.name === "string" ? value.name.trim() : "";
+  if (name.length === 0 || name.length > 80)
+    return { ok: false, error: "INVALID_NAME" };
   if (!("kind" in value) || !accountKinds.includes(value.kind as AccountKind)) {
     return { ok: false, error: "INVALID_KIND" };
   }
-  if (!("currency" in value) || !accountCurrencies.includes(value.currency as AccountCurrency)) {
+  if (
+    !("currency" in value) ||
+    !accountCurrencies.includes(value.currency as AccountCurrency)
+  ) {
     return { ok: false, error: "INVALID_CURRENCY" };
   }
-  return { ok: true, value: { name, kind: value.kind as AccountKind, currency: value.currency as AccountCurrency } };
+  return {
+    ok: true,
+    value: {
+      name,
+      kind: value.kind as AccountKind,
+      currency: value.currency as AccountCurrency,
+    },
+  };
 }
 
-export function validateAccountRename(input: unknown): ValidationResult<{ name: string }> {
+export function validateAccountRename(
+  input: unknown,
+): ValidationResult<{ name: string }> {
   const value = typeof input === "object" && input !== null ? input : {};
-  const name = "name" in value && typeof value.name === "string" ? value.name.trim() : "";
-  if (name.length === 0 || name.length > 80) return { ok: false, error: "INVALID_NAME" };
+  const name =
+    "name" in value && typeof value.name === "string" ? value.name.trim() : "";
+  if (name.length === 0 || name.length > 80)
+    return { ok: false, error: "INVALID_NAME" };
   return { ok: true, value: { name } };
 }
