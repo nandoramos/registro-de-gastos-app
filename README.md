@@ -36,6 +36,7 @@ Se usa TDD por comportamiento: escribir un test en la frontera acordada, observa
 - Google es el único proveedor. Se solicitan `openid`, `email` y `profile`; no permisos de Gmail ni acceso offline.
 - La identidad se valida por `sub` y email verificado antes de crear usuario o sesión. Cada entrada privada comprueba la sesión persistida y su cuenta Google autorizada.
 - Sesiones en PostgreSQL; cookie HttpOnly gestionada por Better Auth, Secure sobre HTTPS, sin caché de sesión en cookie. Vencimiento de 7 días y renovación diaria; cerrar sesión invalida el registro del servidor.
+- Solo se exponen inicio Google, callback, cierre de sesión y consulta de sesión autorizada. Los endpoints adicionales de cuentas y tokens de la biblioteca no están disponibles por HTTP. Cambiar la identidad permitida bloquea también la consulta de una sesión anterior.
 - Vinculación automática de cuentas y contraseñas deshabilitadas. Los tokens OAuth que persiste la biblioteca se cifran con el secreto de autenticación.
 - La app no muestra emails ni perfiles reales; los logs de autenticación se deshabilitan para evitar exponer datos del proveedor. Los errores de rutas se responden con mensajes genéricos.
 - La consulta de autorización filtra conjuntamente por usuario de la sesión, proveedor y subject permitido. Un `user_id` del cliente no concede acceso.

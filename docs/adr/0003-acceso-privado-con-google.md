@@ -12,6 +12,8 @@ Autorizar el identificador Google `sub` configurado en servidor, con email verif
 
 Deshabilitar contraseñas, vinculación automática, inicio directo con ID token del cliente y caché de sesión en cookie. Sesiones persistidas de siete días con renovación diaria. Pedir solo identidad (`openid`, `email`, `profile`) y acceso online, sin incorporar permisos previamente concedidos ni scopes adicionales del cliente. Cifrar los tokens OAuth persistidos. Los logs de autenticación quedan deshabilitados y las respuestas de error no exponen datos internos.
 
+La ruta HTTP de autenticación solo expone inicio Google, callback, cierre de sesión y consulta de sesión. Esta última vuelve a comprobar la identidad autorizada; se bloquean los endpoints de cuentas y tokens que la app no necesita. El cierre de sesión sigue disponible para invalidar sesiones anteriores, sin devolver sus datos.
+
 La configuración se resuelve de forma diferida en servidor: el build no requiere secretos ni conexión a base de datos. Sin configuración, las rutas privadas fallan cerradas. La migración es aditiva y se aplica mediante un comando explícito, nunca al arrancar.
 
 ## Pruebas y límites

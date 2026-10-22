@@ -1,14 +1,8 @@
-import { getAuthRuntime } from "@/modules/auth/server";
+import { getAccess, getAuthRuntime } from "@/modules/auth/server";
+import { authRequestResponse } from "@/modules/auth/http";
 export const runtime = "nodejs";
 async function handle(request: Request) {
-  try {
-    return await getAuthRuntime().auth.handler(request);
-  } catch {
-    return Response.json(
-      { error: "AUTH_UNAVAILABLE" },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
-    );
-  }
+  return authRequestResponse(request, () => getAuthRuntime().auth, getAccess);
 }
 export const GET = handle;
 export const POST = handle;

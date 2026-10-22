@@ -6,6 +6,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
 import { createAuth } from "@/modules/auth/config";
 import { authorizeSession } from "@/modules/auth/access";
+import { authRequestResponse } from "@/modules/auth/http";
 import { ownsGoogleIdentity } from "@/modules/auth/identity-store";
 
 const config = {
@@ -25,8 +26,16 @@ async function callback(
   const db = drizzle(database, { schema });
   await migrate(db, { migrationsFolder: "drizzle" });
   const auth = createAuth(db, config);
+  async function getAccess(headers: Headers) {
+    return authorizeSession(await auth.api.getSession({ headers }), (id) =>
+      ownsGoogleIdentity(db, id, config.allowedGoogleSub),
+    );
+  }
+  function serve(request: Request) {
+    return authRequestResponse(request, () => auth, getAccess);
+  }
   try {
-    const start = await auth.handler(
+    const start = await serve(
       new Request(`${config.baseURL}/api/auth/sign-in/social`, {
         method: "POST",
         headers: { "content-type": "application/json", origin: config.baseURL },
@@ -88,7 +97,7 @@ async function callback(
     const state = tamperState
       ? "forged-state"
       : authorizeURL.searchParams.get("state");
-    const response = await auth.handler(
+    const response = await serve(
       new Request(
         `${config.baseURL}/api/auth/callback/google?code=synthetic-code&state=${encodeURIComponent(state!)}`,
         { headers: { cookie: cookies } },
@@ -104,7 +113,13 @@ async function callback(
     const access = await authorizeSession(session, (id) =>
       ownsGoogleIdentity(db, id, config.allowedGoogleSub),
     );
+    const sessionResponse = await serve(
+      new Request(`${config.baseURL}/api/auth/get-session`, {
+        headers: { cookie: sessionCookie },
+      }),
+    );
     return {
+      sessionResponseStatus: sessionResponse.status,
       status: response.status,
       location: response.headers.get("location"),
       access,
@@ -123,6 +138,7 @@ describe("callback Google con identidad sintética firmada", () => {
     expect(result.status).toBe(302);
     expect(result.location).toContain("/privado");
     expect(result.access.status).toBe("authorized");
+    expect(result.sessionResponseStatus).toBe(200);
     expect(result.users).toHaveLength(1);
     expect(result.sessions).toHaveLength(1);
     expect(result.accounts).toHaveLength(1);

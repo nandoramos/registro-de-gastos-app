@@ -7,7 +7,10 @@ import * as schema from "@/db/schema";
 import { createAuth } from "@/modules/auth/config";
 import { authorizeSession } from "@/modules/auth/access";
 import { ownsGoogleIdentity } from "@/modules/auth/identity-store";
-import { privateSessionResponse } from "@/modules/auth/http";
+import {
+  authRequestResponse,
+  privateSessionResponse,
+} from "@/modules/auth/http";
 
 const database = new PGlite();
 const db = drizzle(database, { schema });
@@ -51,30 +54,24 @@ beforeAll(async () => {
     ["owner", "google-owner"],
     ["other", "google-other"],
   ]) {
-    await db
-      .insert(schema.user)
-      .values({
-        id,
-        name: "Synthetic",
-        email: `${id}@example.test`,
-        emailVerified: true,
-      });
-    await db
-      .insert(schema.account)
-      .values({
-        id: `account-${id}`,
-        userId: id,
-        providerId: "google",
-        accountId: sub,
-      });
-    await db
-      .insert(schema.session)
-      .values({
-        id: `session-${id}`,
-        userId: id,
-        token: `synthetic-token-${id}`,
-        expiresAt: new Date(now.getTime() + 3600000),
-      });
+    await db.insert(schema.user).values({
+      id,
+      name: "Synthetic",
+      email: `${id}@example.test`,
+      emailVerified: true,
+    });
+    await db.insert(schema.account).values({
+      id: `account-${id}`,
+      userId: id,
+      providerId: "google",
+      accountId: sub,
+    });
+    await db.insert(schema.session).values({
+      id: `session-${id}`,
+      userId: id,
+      token: `synthetic-token-${id}`,
+      expiresAt: new Date(now.getTime() + 3600000),
+    });
   }
   ownerCookie = await signedCookie("synthetic-token-owner");
   otherCookie = await signedCookie("synthetic-token-other");
@@ -122,14 +119,12 @@ describe("frontera privada con sesiones persistidas", () => {
     ).toEqual({ status: "forbidden" });
   });
   it("rechaza sesiones vencidas", async () => {
-    await db
-      .insert(schema.session)
-      .values({
-        id: "expired",
-        userId: "owner",
-        token: "expired-synthetic",
-        expiresAt: new Date(now.getTime() - 60000),
-      });
+    await db.insert(schema.session).values({
+      id: "expired",
+      userId: "owner",
+      token: "expired-synthetic",
+      expiresAt: new Date(now.getTime() - 60000),
+    });
     const res = await privateSessionResponse(
       request(await signedCookie("expired-synthetic")),
       access,
@@ -225,5 +220,44 @@ describe("inicio OAuth", () => {
       }),
     );
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe("superficie HTTP de autenticación", () => {
+  it("impide consultar la sesión si la identidad ya no está autorizada", async () => {
+    const res = await authRequestResponse(
+      new Request(`${config.baseURL}/api/auth/get-session`, {
+        headers: { cookie: otherCookie },
+      }),
+      () => auth,
+      access,
+    );
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "FORBIDDEN" });
+  });
+  it("no expone endpoints de cuentas ni tokens que la app no necesita", async () => {
+    for (const path of [
+      "list-accounts",
+      "list-sessions",
+      "get-access-token",
+      "update-user",
+    ]) {
+      const res = await authRequestResponse(
+        new Request(`${config.baseURL}/api/auth/${path}`, {
+          headers: { cookie: otherCookie },
+        }),
+        () => auth,
+        access,
+      );
+      expect(res.status, path).toBe(404);
+    }
+  });
+  it("rechaza consulta anónima de sesión", async () => {
+    const res = await authRequestResponse(
+      new Request(`${config.baseURL}/api/auth/get-session`),
+      () => auth,
+      access,
+    );
+    expect(res.status).toBe(401);
   });
 });
