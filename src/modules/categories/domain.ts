@@ -1,9 +1,3 @@
-export type CategoryView = {
-  id: string;
-  name: string;
-  systemKey: string | null;
-};
-
 export const initialCategories = [
   ["food", "Alimentación"],
   ["housing", "Vivienda"],
@@ -26,6 +20,14 @@ export const initialCategories = [
   ["ose_country_house", "OSE Casa de campo"],
   ["facu", "Facu"],
 ] as const;
+
+export type InitialCategoryKey = (typeof initialCategories)[number][0];
+
+export type CategoryView = {
+  id: string;
+  name: string;
+  systemKey: InitialCategoryKey | null;
+};
 
 export function validateCategoryName(
   input: unknown,

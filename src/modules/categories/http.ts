@@ -17,7 +17,7 @@ function denied(status: "unauthenticated" | "forbidden") {
   );
 }
 
-async function body(request: Request): Promise<unknown> {
+async function readJsonBody(request: Request): Promise<unknown> {
   try {
     return await request.json();
   } catch {
@@ -40,7 +40,7 @@ export async function categoriesCollectionResponse<T extends PgQueryResultHKT>(
       );
     }
     if (request.method === "POST") {
-      const validation = validateCategoryName(await body(request));
+      const validation = validateCategoryName(await readJsonBody(request));
       if (!validation.ok) {
         return Response.json(
           { error: validation.error },
@@ -79,7 +79,7 @@ export async function categoryResourceResponse<T extends PgQueryResultHKT>(
         { status: 405, headers },
       );
     }
-    const validation = validateCategoryName(await body(request));
+    const validation = validateCategoryName(await readJsonBody(request));
     if (!validation.ok) {
       return Response.json(
         { error: validation.error },

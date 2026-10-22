@@ -8,6 +8,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { InitialCategoryKey } from "@/modules/categories/domain";
 
 export const user = pgTable("auth_user", {
   id: text("id").primaryKey(),
@@ -133,7 +134,7 @@ export const expenseCategory = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    systemKey: text("system_key"),
+    systemKey: text("system_key").$type<InitialCategoryKey>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
