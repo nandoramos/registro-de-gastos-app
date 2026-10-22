@@ -27,13 +27,19 @@ export default async function PrivateHome() {
           Este es tu espacio.
         </h1>
         <p className="mt-6 text-lg leading-8 text-stone-600">
-          Tu sesión está activa. La carga de gastos y el resumen mensual estarán
-          disponibles en los próximos pasos.
+          Tu sesión está activa. Ya podés registrar un gasto manual con su
+          cuenta, categoría y evidencia.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/privado/cuentas"
+            href="/privado/gastos/nuevo"
             className="inline-flex min-h-12 items-center rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            Registrar gasto
+          </Link>
+          <Link
+            href="/privado/cuentas"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >
             Configurar cuentas
           </Link>

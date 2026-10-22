@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { ExpenseForm } from "@/components/expense-form";
+import { SignOutButton } from "@/components/auth-buttons";
+import { getAccess, getAuthRuntime } from "@/modules/auth/server";
+import { listAccounts } from "@/modules/accounts/service";
+import { listCategories } from "@/modules/categories/service";
+
+export const dynamic = "force-dynamic";
+
+export default async function NewExpensePage() {
+  let access;
+  try {
+    access = await getAccess(await headers());
+  } catch {
+    redirect("/login?error=unavailable");
+  }
+  if (access.status === "unauthenticated") redirect("/login");
+  if (access.status === "forbidden") redirect("/login?error=access");
+
+  let accounts;
+  let categories;
+  try {
+    [accounts, categories] = await Promise.all([
+      listAccounts(getAuthRuntime().db, access.userId),
+      listCategories(getAuthRuntime().db, access.userId),
+    ]);
+  } catch {
+    redirect("/login?error=unavailable");
+  }
+
+  return (
+    <main className="mx-auto min-h-dvh max-w-6xl px-6 py-8 sm:px-12 sm:py-12">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-7">
+        <Link href="/privado" className="font-semibold">
+          Registro de Gastos
+        </Link>
+        <SignOutButton />
+      </header>
+      <div className="py-10 sm:py-14">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
+          Carga manual
+        </p>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+          Registrar gasto
+        </h1>
+        <p className="mt-4 max-w-2xl leading-7 text-stone-600">
+          Registrá lo efectivamente debitado de la cuenta elegida. La moneda se
+          toma de esa cuenta.
+        </p>
+        {accounts.length === 0 ? (
+          <p className="mt-8 rounded-xl bg-amber-50 p-5 text-amber-950">
+            Primero necesitás{" "}
+            <Link className="font-semibold underline" href="/privado/cuentas">
+              crear una cuenta
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="mt-10">
+            <ExpenseForm accounts={accounts} categories={categories} />
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

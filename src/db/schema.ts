@@ -1,9 +1,13 @@
 import {
   boolean,
   check,
+  date,
   index,
+  jsonb,
+  numeric,
   pgTable,
   text,
+  time,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -149,5 +153,61 @@ export const expenseCategory = pgTable(
       table.systemKey,
     ),
     check("expense_category_name_not_blank", sql`btrim(${table.name}) <> ''`),
+  ],
+);
+
+export const sourceEvent = pgTable(
+  "source_event",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").$type<"manual">().notNull(),
+    originalPayload: jsonb("original_payload")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("source_event_user_idx").on(table.userId),
+    check("source_event_type_allowed", sql`${table.sourceType} in ('manual')`),
+  ],
+);
+
+export const expense = pgTable(
+  "expense",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id")
+      .notNull()
+      .references(() => sourceEvent.id),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => expenseCategory.id),
+    operationDate: date("operation_date", { mode: "string" }).notNull(),
+    operationTime: time("operation_time"),
+    title: text("title").notNull(),
+    note: text("note"),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("expense_user_date_idx").on(table.userId, table.operationDate),
+    uniqueIndex("expense_source_event_unique").on(table.sourceEventId),
+    check("expense_title_not_blank", sql`btrim(${table.title}) <> ''`),
+    check("expense_amount_positive", sql`${table.amount} > 0`),
+    check("expense_currency_allowed", sql`${table.currency} in ('UYU', 'USD')`),
   ],
 );
