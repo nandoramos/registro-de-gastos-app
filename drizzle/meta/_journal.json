@@ -64,6 +64,13 @@
       "when": 1792756748086,
       "tag": "0008_chilly_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792759820009,
+      "tag": "0009_slimy_glorian",
+      "breakpoints": true
     }
   ]
 }

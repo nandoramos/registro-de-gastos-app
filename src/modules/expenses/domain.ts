@@ -59,7 +59,7 @@ function asRecord(input: unknown): Record<string, unknown> {
     : {};
 }
 
-function validDate(value: unknown): value is string {
+export function validOperationDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
@@ -70,7 +70,7 @@ function validDate(value: unknown): value is string {
   );
 }
 
-function decimalAmount(value: unknown): string | undefined {
+export function normalizeMoneyAmount(value: unknown): string | undefined {
   if (typeof value !== "string" || !/^\d+(?:[.,]\d{1,2})?$/.test(value)) {
     return undefined;
   }
@@ -98,7 +98,7 @@ export function adaptManualExpense(input: unknown): ValidationResult {
     currency: value.currency,
   };
 
-  if (!validDate(value.operationDate)) {
+  if (!validOperationDate(value.operationDate)) {
     return { ok: false, error: "INVALID_DATE" };
   }
   const operationTime =
@@ -129,7 +129,7 @@ export function adaptManualExpense(input: unknown): ValidationResult {
   if (typeof value.categoryId !== "string" || value.categoryId.length === 0) {
     return { ok: false, error: "INVALID_CATEGORY" };
   }
-  const amount = decimalAmount(value.amount);
+  const amount = normalizeMoneyAmount(value.amount);
   if (!amount) return { ok: false, error: "INVALID_AMOUNT" };
   if (!accountCurrencies.includes(value.currency as AccountCurrency)) {
     return { ok: false, error: "INVALID_CURRENCY" };

@@ -1,0 +1,222 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import * as schema from "@/db/schema";
+import { pendingEntryResourceResponse } from "@/modules/pending-entries/http";
+import {
+  transferResourceResponse,
+  transfersCollectionResponse,
+} from "@/modules/transfers/http";
+
+const database = new PGlite();
+const db = drizzle(database, { schema });
+const ownerAccess = async () => ({
+  status: "authorized" as const,
+  userId: "transfer-owner",
+});
+
+function request(path: string, method = "GET", body?: unknown) {
+  return new Request(`http://localhost:3000${path}`, {
+    method,
+    headers: body ? { "content-type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+const completeTransfer = {
+  kind: "transfer",
+  operationDate: "2026-10-23",
+  title: "Traslado sintético",
+  note: "Entre cuentas propias",
+  sourceAccountId: "owner-bank-a",
+  destinationAccountId: "owner-bank-b",
+  sourceAmount: "1500,25",
+  destinationAmount: "1500.25",
+  currency: "UYU",
+};
+
+beforeAll(async () => {
+  await migrate(db, { migrationsFolder: "drizzle" });
+  await db.insert(schema.user).values([
+    {
+      id: "transfer-owner",
+      name: "Synthetic transfer owner",
+      email: "transfer-owner@example.test",
+      emailVerified: true,
+    },
+    {
+      id: "transfer-other",
+      name: "Synthetic other owner",
+      email: "transfer-other@example.test",
+      emailVerified: true,
+    },
+  ]);
+});
+
+beforeEach(async () => {
+  await db.delete(schema.ownTransfer);
+  await db.delete(schema.pendingEntry);
+  await db.delete(schema.sourceEvent);
+  await db.delete(schema.financialAccount);
+  await db.insert(schema.financialAccount).values([
+    {
+      id: "owner-bank-a",
+      userId: "transfer-owner",
+      name: "Banco origen",
+      kind: "bank",
+      currency: "UYU",
+    },
+    {
+      id: "owner-bank-b",
+      userId: "transfer-owner",
+      name: "Banco destino",
+      kind: "bank",
+      currency: "UYU",
+    },
+    {
+      id: "owner-cash",
+      userId: "transfer-owner",
+      name: "Efectivo pesos",
+      kind: "cash",
+      currency: "UYU",
+    },
+    {
+      id: "other-bank",
+      userId: "transfer-other",
+      name: "Cuenta ajena",
+      kind: "bank",
+      currency: "UYU",
+    },
+  ]);
+});
+
+afterAll(async () => database.close());
+
+describe("transferencias propias y retiros", () => {
+  it("registra ambos lados como una operación con evidencia y sin gasto", async () => {
+    const response = await transfersCollectionResponse(
+      request("/api/transfers", "POST", completeTransfer),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        id: expect.any(String),
+        kind: "transfer",
+        operationDate: "2026-10-23",
+        title: "Traslado sintético",
+        note: "Entre cuentas propias",
+        source: {
+          account: expect.objectContaining({ id: "owner-bank-a" }),
+          amount: "1500.25",
+          currency: "UYU",
+        },
+        destination: {
+          account: expect.objectContaining({ id: "owner-bank-b" }),
+          amount: "1500.25",
+          currency: "UYU",
+        },
+        evidence: expect.objectContaining({ original: completeTransfer }),
+      }),
+    );
+    expect(await db.select().from(schema.ownTransfer)).toHaveLength(1);
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+  });
+
+  it("conserva un lado faltante como pendiente y permite completarlo", async () => {
+    const incomplete = { ...completeTransfer, destinationAmount: "" };
+    const created = await transfersCollectionResponse(
+      request("/api/transfers", "POST", incomplete),
+      db,
+      ownerAccess,
+    );
+    expect(created.status).toBe(202);
+    const pending = await created.json();
+    expect(pending.issues).toContain("INVALID_DESTINATION_AMOUNT");
+    expect(await db.select().from(schema.ownTransfer)).toHaveLength(0);
+
+    const completed = await pendingEntryResourceResponse(
+      request(`/api/pending-entries/${pending.id}`, "PATCH", completeTransfer),
+      pending.id,
+      db,
+      ownerAccess,
+    );
+    expect(completed.status).toBe(201);
+    const body = await completed.json();
+    expect(body.status).toBe("registered");
+    expect(body.transfer).toEqual(
+      expect.objectContaining({
+        kind: "transfer",
+        title: "Traslado sintético",
+        evidence: expect.objectContaining({ original: incomplete }),
+      }),
+    );
+    expect(await db.select().from(schema.pendingEntry)).toHaveLength(0);
+  });
+
+  it("registra un retiro de banco a efectivo sin crear gasto", async () => {
+    const response = await transfersCollectionResponse(
+      request("/api/transfers", "POST", {
+        ...completeTransfer,
+        kind: "withdrawal",
+        title: "Retiro sintético",
+        destinationAccountId: "owner-cash",
+      }),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(201);
+    expect((await response.json()).kind).toBe("withdrawal");
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+  });
+
+  it("mantiene pendiente una diferencia de importes en la misma moneda", async () => {
+    const response = await transfersCollectionResponse(
+      request("/api/transfers", "POST", {
+        ...completeTransfer,
+        destinationAmount: "1490.25",
+      }),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(202);
+    expect((await response.json()).issues).toContain("AMOUNTS_MISMATCH");
+    expect(await db.select().from(schema.ownTransfer)).toHaveLength(0);
+  });
+
+  it("mantiene pendiente una cuenta ajena y no permite consultar otra operación", async () => {
+    const foreignReference = await transfersCollectionResponse(
+      request("/api/transfers", "POST", {
+        ...completeTransfer,
+        destinationAccountId: "other-bank",
+      }),
+      db,
+      ownerAccess,
+    );
+    expect(foreignReference.status).toBe(202);
+    expect((await foreignReference.json()).issues).toContain(
+      "DESTINATION_ACCOUNT_NOT_FOUND",
+    );
+
+    const created = await transfersCollectionResponse(
+      request("/api/transfers", "POST", completeTransfer),
+      db,
+      ownerAccess,
+    );
+    const { id } = await created.json();
+    const otherAccess = async () => ({
+      status: "authorized" as const,
+      userId: "transfer-other",
+    });
+    const hidden = await transferResourceResponse(
+      request(`/api/transfers/${id}`),
+      id,
+      db,
+      otherAccess,
+    );
+    expect(hidden.status).toBe(404);
+  });
+});

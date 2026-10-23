@@ -7,6 +7,11 @@ import {
   validateExpenseReferences,
   type ExpensesDatabase,
 } from "@/modules/expenses/service";
+import type { TransferInput } from "@/modules/transfers/domain";
+import {
+  getTransferDetail,
+  validateTransferReferences,
+} from "@/modules/transfers/service";
 
 export type PendingEntryView = {
   id: string;
@@ -226,4 +231,54 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
   const expense = await getExpenseDetail(db, userId, expenseId);
   if (!expense) throw new Error("Completed expense is unavailable");
   return { ok: true, reviewedAt, expense };
+}
+
+export async function completePendingTransfer<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  id: string,
+  input: TransferInput,
+  interpretation: Record<string, unknown>,
+) {
+  if (!(await getPendingEntry(db, userId, id))) {
+    return { ok: false as const, error: "NOT_FOUND" as const };
+  }
+  const references = await validateTransferReferences(db, userId, input);
+  if (!references.ok) return references;
+
+  const transferId = crypto.randomUUID();
+  const reviewedAt = new Date();
+  const completed = await db.transaction(async (transaction) => {
+    const [claimed] = await transaction
+      .delete(schema.pendingEntry)
+      .where(
+        and(
+          eq(schema.pendingEntry.sourceEventId, id),
+          eq(schema.pendingEntry.userId, userId),
+          eq(schema.pendingEntry.status, "pending"),
+        ),
+      )
+      .returning({ id: schema.pendingEntry.sourceEventId });
+    if (!claimed) return false;
+    await transaction.insert(schema.ownTransfer).values({
+      id: transferId,
+      userId,
+      sourceEventId: id,
+      ...input,
+    });
+    await transaction.insert(schema.sourceEventReview).values({
+      id: crypto.randomUUID(),
+      sourceEventId: id,
+      userId,
+      interpretation,
+      issues: [],
+      outcome: "registered",
+      createdAt: reviewedAt,
+    });
+    return true;
+  });
+  if (!completed) return { ok: false as const, error: "NOT_FOUND" as const };
+  const transfer = await getTransferDetail(db, userId, transferId);
+  if (!transfer) throw new Error("Completed transfer is unavailable");
+  return { ok: true as const, reviewedAt, transfer };
 }

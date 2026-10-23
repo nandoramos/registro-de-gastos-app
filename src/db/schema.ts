@@ -300,3 +300,67 @@ export const expenseRevision = pgTable(
     index("expense_revision_user_idx").on(table.userId),
   ],
 );
+
+export const ownTransfer = pgTable(
+  "own_transfer",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id")
+      .notNull()
+      .references(() => sourceEvent.id),
+    kind: text("kind").$type<"transfer" | "withdrawal">().notNull(),
+    operationDate: date("operation_date", { mode: "string" }).notNull(),
+    title: text("title").notNull(),
+    note: text("note"),
+    sourceAccountId: text("source_account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    destinationAccountId: text("destination_account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    sourceAmount: numeric("source_amount", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    destinationAmount: numeric("destination_amount", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("own_transfer_user_date_idx").on(table.userId, table.operationDate),
+    uniqueIndex("own_transfer_source_event_unique").on(table.sourceEventId),
+    check("own_transfer_title_not_blank", sql`btrim(${table.title}) <> ''`),
+    check(
+      "own_transfer_kind_allowed",
+      sql`${table.kind} in ('transfer', 'withdrawal')`,
+    ),
+    check(
+      "own_transfer_currency_allowed",
+      sql`${table.currency} in ('UYU', 'USD')`,
+    ),
+    check(
+      "own_transfer_source_amount_positive",
+      sql`${table.sourceAmount} > 0`,
+    ),
+    check(
+      "own_transfer_destination_amount_positive",
+      sql`${table.destinationAmount} > 0`,
+    ),
+    check(
+      "own_transfer_accounts_different",
+      sql`${table.sourceAccountId} <> ${table.destinationAccountId}`,
+    ),
+    check(
+      "own_transfer_amounts_equal",
+      sql`${table.sourceAmount} = ${table.destinationAmount}`,
+    ),
+  ],
+);
