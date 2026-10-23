@@ -68,4 +68,31 @@ Importe debitado: UYU -20`);
     expect(invalid.fields).toEqual({ title: "Ejemplo" });
     expect(invalid.issues).toEqual(["INVALID_DATE", "INVALID_AMOUNT"]);
   });
+
+  it("señala encabezados y campos explícitos que se contradicen", () => {
+    expect(
+      parseItauEmailText(`ITAÚ
+COMPRA CON DÉBITO
+TRANSFERENCIA
+Fecha: 24/10/2026
+Importe debitado: UYU 20,00`),
+    ).toEqual({
+      format: "unknown",
+      kind: "unknown",
+      fields: {},
+      issues: ["CONTRADICTORY_FORMAT"],
+    });
+
+    const duplicate = parseItauEmailText(`ITAÚ
+COMPRA CON DÉBITO
+Fecha: 24/10/2026
+Comercio: Ejemplo
+Importe debitado: UYU 20,00
+Importe debitado: UYU 30,00`);
+    expect(duplicate.fields).toEqual({
+      operationDate: "2026-10-24",
+      title: "Ejemplo",
+    });
+    expect(duplicate.issues).toEqual(["CONTRADICTORY_FIELD"]);
+  });
 });

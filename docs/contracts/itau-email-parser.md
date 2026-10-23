@@ -29,6 +29,8 @@ Importe debitado: USD 25,00
 
 La transferencia siempre informa que su naturaleza financiera requiere decisión manual: el texto bancario por sí solo no permite concluir si es un gasto o un traslado entre cuentas propias. No se inventan la hora ni el destinatario cuando están ausentes.
 
+Si aparecen a la vez los encabezados de compra y transferencia, el formato se considera contradictorio. Si un mismo campo aparece con valores distintos, ninguno de esos valores se elige automáticamente y se informa la contradicción.
+
 ## Valores monetarios
 
 Los valores admiten un importe positivo con coma decimal de uno o dos dígitos y puntos opcionales como separadores de miles. El símbolo `$` aislado conserva el importe detectado pero produce una ambigüedad de moneda; no se elige UYU ni USD por suposición.
