@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
 import { ExpenseEditForm } from "@/components/expense-edit-form";
+import { ExpenseRevisionList } from "@/components/expense-revision-list";
 import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
@@ -108,34 +109,11 @@ export default async function ExpenseDetailPage({
 
         <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold">Historial de correcciones</h2>
-          {expense.history.length === 0 ? (
-            <p className="mt-3 text-sm text-stone-600">
-              Este gasto todavía no tiene correcciones.
-            </p>
-          ) : (
-            <ol className="mt-5 grid gap-4">
-              {expense.history.map((revision) => (
-                <li
-                  key={revision.id}
-                  className="rounded-xl border border-stone-200 p-4"
-                >
-                  <p className="text-xs uppercase tracking-wide text-stone-500">
-                    {revision.changedAt.toLocaleString("es-UY")}
-                  </p>
-                  <p className="mt-2 text-sm">
-                    <span className="font-medium">Antes:</span>{" "}
-                    {revision.previous.title} · {revision.previous.currency}{" "}
-                    {revision.previous.amount}
-                  </p>
-                  <p className="mt-1 text-sm">
-                    <span className="font-medium">Después:</span>{" "}
-                    {revision.current.title} · {revision.current.currency}{" "}
-                    {revision.current.amount}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          )}
+          <ExpenseRevisionList
+            history={expense.history}
+            accounts={accounts}
+            categories={categories}
+          />
         </section>
 
         <section className="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-6">

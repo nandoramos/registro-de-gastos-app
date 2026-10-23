@@ -199,6 +199,22 @@ const expenseSnapshotSelection = {
   currency: schema.expense.currency,
 };
 
+function storedExpenseInput(input: ExpenseInput): ExpenseInput {
+  return {
+    ...input,
+    operationTime:
+      input.operationTime && /^\d{2}:\d{2}$/.test(input.operationTime)
+        ? `${input.operationTime}:00`
+        : input.operationTime,
+  };
+}
+
+function sameExpenseInput(left: ExpenseInput, right: ExpenseInput): boolean {
+  return (Object.keys(left) as (keyof ExpenseInput)[]).every(
+    (key) => left[key] === right[key],
+  );
+}
+
 export async function updateExpense<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
   userId: string,
@@ -215,6 +231,7 @@ export async function updateExpense<T extends PgQueryResultHKT>(
 
   const references = await validateExpenseReferences(db, userId, input);
   if (!references.ok) return references;
+  const currentInput = storedExpenseInput(input);
 
   const changed = await db.transaction(async (transaction) => {
     const [previous] = await transaction
@@ -228,10 +245,11 @@ export async function updateExpense<T extends PgQueryResultHKT>(
       )
       .for("update");
     if (!previous) return false;
+    if (sameExpenseInput(previous, currentInput)) return "unchanged" as const;
 
     const [current] = await transaction
       .update(schema.expense)
-      .set({ ...input, updatedAt: new Date() })
+      .set({ ...currentInput, updatedAt: new Date() })
       .where(
         and(
           eq(schema.expense.id, expenseId),

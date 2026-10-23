@@ -316,6 +316,26 @@ describe("registro manual de gastos", () => {
     expect(await db.select().from(schema.expenseRevision)).toHaveLength(0);
   });
 
+  it("no agrega una revisión cuando se guarda sin cambios", async () => {
+    const created = await expensesCollectionResponse(
+      request("/api/expenses", "POST", completeExpense),
+      db,
+      ownerAccess,
+    );
+    const original = await created.json();
+
+    const response = await expenseResourceResponse(
+      request(`/api/expenses/${original.id}`, "PATCH", completeExpense),
+      original.id,
+      db,
+      ownerAccess,
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).history).toEqual([]);
+    expect(await db.select().from(schema.expenseRevision)).toHaveLength(0);
+  });
+
   it("cambia la categoría únicamente en el gasto corregido", async () => {
     const first = await expensesCollectionResponse(
       request("/api/expenses", "POST", completeExpense),
