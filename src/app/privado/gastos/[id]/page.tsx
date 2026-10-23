@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
+import { ExpenseEditForm } from "@/components/expense-edit-form";
+import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
+import { listCategories } from "@/modules/categories/service";
 import { getExpenseDetail } from "@/modules/expenses/service";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +18,14 @@ export default async function ExpenseDetailPage({
   const access = await requireAuthorizedPage();
 
   let expense;
+  let accounts;
+  let categories;
   try {
-    expense = await getExpenseDetail(
-      getAuthRuntime().db,
-      access.userId,
-      (await params).id,
-    );
+    [expense, accounts, categories] = await Promise.all([
+      getExpenseDetail(getAuthRuntime().db, access.userId, (await params).id),
+      listAccounts(getAuthRuntime().db, access.userId),
+      listCategories(getAuthRuntime().db, access.userId),
+    ]);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -87,6 +92,51 @@ export default async function ExpenseDetailPage({
             </div>
           )}
         </dl>
+
+        <section className="mt-8">
+          <h2 className="text-xl font-semibold">Corregir gasto</h2>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            Los cambios válidos se aplican al gasto y quedan registrados en su
+            historial. La evidencia original no se modifica.
+          </p>
+          <ExpenseEditForm
+            expense={expense}
+            accounts={accounts}
+            categories={categories}
+          />
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold">Historial de correcciones</h2>
+          {expense.history.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-600">
+              Este gasto todavía no tiene correcciones.
+            </p>
+          ) : (
+            <ol className="mt-5 grid gap-4">
+              {expense.history.map((revision) => (
+                <li
+                  key={revision.id}
+                  className="rounded-xl border border-stone-200 p-4"
+                >
+                  <p className="text-xs uppercase tracking-wide text-stone-500">
+                    {revision.changedAt.toLocaleString("es-UY")}
+                  </p>
+                  <p className="mt-2 text-sm">
+                    <span className="font-medium">Antes:</span>{" "}
+                    {revision.previous.title} · {revision.previous.currency}{" "}
+                    {revision.previous.amount}
+                  </p>
+                  <p className="mt-1 text-sm">
+                    <span className="font-medium">Después:</span>{" "}
+                    {revision.current.title} · {revision.current.currency}{" "}
+                    {revision.current.amount}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
 
         <section className="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-6">
           <h2 className="text-xl font-semibold">Evidencia y procedencia</h2>

@@ -10,3 +10,11 @@ export async function GET(
   const { id } = await params;
   return expenseResourceResponse(request, id, getAuthRuntime().db, getAccess);
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  return expenseResourceResponse(request, id, getAuthRuntime().db, getAccess);
+}

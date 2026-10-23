@@ -57,6 +57,13 @@
       "when": 1792756499378,
       "tag": "0007_woozy_robin_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792756748086,
+      "tag": "0008_chilly_moondragon",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { InitialCategoryKey } from "@/modules/categories/domain";
+import type { ExpenseInput } from "@/modules/expenses/domain";
 
 export const user = pgTable("auth_user", {
   id: text("id").primaryKey(),
@@ -265,6 +266,9 @@ export const expense = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("expense_user_date_idx").on(table.userId, table.operationDate),
@@ -272,5 +276,27 @@ export const expense = pgTable(
     check("expense_title_not_blank", sql`btrim(${table.title}) <> ''`),
     check("expense_amount_positive", sql`${table.amount} > 0`),
     check("expense_currency_allowed", sql`${table.currency} in ('UYU', 'USD')`),
+  ],
+);
+
+export const expenseRevision = pgTable(
+  "expense_revision",
+  {
+    id: text("id").primaryKey(),
+    expenseId: text("expense_id")
+      .notNull()
+      .references(() => expense.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    previous: jsonb("previous").$type<ExpenseInput>().notNull(),
+    current: jsonb("current").$type<ExpenseInput>().notNull(),
+    changedAt: timestamp("changed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("expense_revision_expense_idx").on(table.expenseId, table.changedAt),
+    index("expense_revision_user_idx").on(table.userId),
   ],
 );

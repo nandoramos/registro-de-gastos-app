@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpenseDetail, ExpenseInput } from "./domain";
@@ -56,6 +56,21 @@ export async function getExpenseDetail<T extends PgQueryResultHKT>(
       ),
     );
   if (!row) return undefined;
+  const history = await db
+    .select({
+      id: schema.expenseRevision.id,
+      previous: schema.expenseRevision.previous,
+      current: schema.expenseRevision.current,
+      changedAt: schema.expenseRevision.changedAt,
+    })
+    .from(schema.expenseRevision)
+    .where(
+      and(
+        eq(schema.expenseRevision.expenseId, expenseId),
+        eq(schema.expenseRevision.userId, userId),
+      ),
+    )
+    .orderBy(asc(schema.expenseRevision.changedAt));
   return {
     id: row.id,
     operationDate: row.operationDate,
@@ -75,6 +90,7 @@ export async function getExpenseDetail<T extends PgQueryResultHKT>(
       receivedAt: row.receivedAt,
       original: row.originalPayload,
     },
+    history,
   };
 }
 
@@ -158,5 +174,85 @@ export async function registerManualExpense<T extends PgQueryResultHKT>(
   });
   const expense = await getExpenseDetail(db, userId, expenseId);
   if (!expense) throw new Error("Registered expense is unavailable");
+  return { ok: true, expense };
+}
+
+type UpdateResult =
+  | { ok: true; expense: ExpenseDetail }
+  | {
+      ok: false;
+      error:
+        | "NOT_FOUND"
+        | "ACCOUNT_NOT_FOUND"
+        | "CATEGORY_NOT_FOUND"
+        | "CURRENCY_MISMATCH";
+    };
+
+const expenseSnapshotSelection = {
+  operationDate: schema.expense.operationDate,
+  operationTime: schema.expense.operationTime,
+  title: schema.expense.title,
+  note: schema.expense.note,
+  categoryId: schema.expense.categoryId,
+  accountId: schema.expense.accountId,
+  amount: schema.expense.amount,
+  currency: schema.expense.currency,
+};
+
+export async function updateExpense<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  expenseId: string,
+  input: ExpenseInput,
+): Promise<UpdateResult> {
+  const [ownedExpense] = await db
+    .select({ id: schema.expense.id })
+    .from(schema.expense)
+    .where(
+      and(eq(schema.expense.id, expenseId), eq(schema.expense.userId, userId)),
+    );
+  if (!ownedExpense) return { ok: false, error: "NOT_FOUND" };
+
+  const references = await validateExpenseReferences(db, userId, input);
+  if (!references.ok) return references;
+
+  const changed = await db.transaction(async (transaction) => {
+    const [previous] = await transaction
+      .select(expenseSnapshotSelection)
+      .from(schema.expense)
+      .where(
+        and(
+          eq(schema.expense.id, expenseId),
+          eq(schema.expense.userId, userId),
+        ),
+      )
+      .for("update");
+    if (!previous) return false;
+
+    const [current] = await transaction
+      .update(schema.expense)
+      .set({ ...input, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.expense.id, expenseId),
+          eq(schema.expense.userId, userId),
+        ),
+      )
+      .returning(expenseSnapshotSelection);
+    if (!current) return false;
+
+    await transaction.insert(schema.expenseRevision).values({
+      id: crypto.randomUUID(),
+      expenseId,
+      userId,
+      previous,
+      current,
+    });
+    return true;
+  });
+  if (!changed) return { ok: false, error: "NOT_FOUND" };
+
+  const expense = await getExpenseDetail(db, userId, expenseId);
+  if (!expense) throw new Error("Updated expense is unavailable");
   return { ok: true, expense };
 }

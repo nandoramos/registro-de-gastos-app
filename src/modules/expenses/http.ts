@@ -4,6 +4,7 @@ import { adaptManualExpense } from "./domain";
 import {
   getExpenseDetail,
   registerManualExpense,
+  updateExpense,
   type ExpensesDatabase,
 } from "./service";
 
@@ -69,12 +70,33 @@ export async function expenseResourceResponse<T extends PgQueryResultHKT>(
   try {
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
-    if (request.method !== "GET") {
+    if (request.method !== "GET" && request.method !== "PATCH") {
       return Response.json(
         { error: "METHOD_NOT_ALLOWED" },
         { status: 405, headers },
       );
     }
+    if (request.method === "PATCH") {
+      const adapted = adaptManualExpense(await readJsonBody(request));
+      if (!adapted.ok) {
+        return Response.json(
+          { error: adapted.error },
+          { status: 422, headers },
+        );
+      }
+      const result = await updateExpense(
+        db,
+        access.userId,
+        expenseId,
+        adapted.value.expense,
+      );
+      if (!result.ok) {
+        const status = result.error === "NOT_FOUND" ? 404 : 422;
+        return Response.json({ error: result.error }, { status, headers });
+      }
+      return Response.json(result.expense, { headers });
+    }
+
     const expense = await getExpenseDetail(db, access.userId, expenseId);
     if (!expense) {
       return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });

@@ -1,6 +1,6 @@
 # Registro de Gastos
 
-App personal privada. Están implementados los tickets [#2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2), [#3: cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3), [#4: categorías](https://github.com/nandoramos/registro-de-gastos-app/issues/4), [#5: gasto manual](https://github.com/nandoramos/registro-de-gastos-app/issues/5), [#6: completar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/6) y [#7: descartar y recuperar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/7). Los reportes y las demás fuentes de carga se implementarán en tickets posteriores.
+App personal privada. Están implementados los tickets [#2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2), [#3: cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3), [#4: categorías](https://github.com/nandoramos/registro-de-gastos-app/issues/4), [#5: gasto manual](https://github.com/nandoramos/registro-de-gastos-app/issues/5), [#6: completar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/6), [#7: descartar y recuperar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/7) y [#13: corregir gastos](https://github.com/nandoramos/registro-de-gastos-app/issues/13). Los reportes y las demás fuentes de carga se implementarán en tickets posteriores.
 
 ## Ejecutar localmente
 
@@ -44,6 +44,7 @@ Se usa TDD por comportamiento: escribir un test en la frontera acordada, observa
 - Las cuentas financieras se almacenan separadas de las cuentas OAuth, pertenecen al usuario de la sesión y admiten únicamente UYU o USD. El MVP no calcula saldos.
 - Las categorías iniciales se crean de forma idempotente para cada usuario. Las categorías propias y los cambios de nombre quedan aislados por el usuario derivado de la sesión; la identidad estable de «Casa Nueva» no depende de su nombre visible.
 - La carga manual conserva el objeto estructurado original en un evento de fuente separado e inmutable desde las operaciones públicas. El gasto normalizado usa `numeric(18,2)`, exige importe positivo y moneda coherente con la cuenta, y registra la fecha de ingreso separada de la fecha de la operación.
+- Las correcciones válidas conservan esa evidencia y agregan al historial las versiones normalizadas anterior y nueva. Una edición inválida no modifica la última versión válida.
 
 Decisiones de arquitectura: [ADR-0003](docs/adr/0003-acceso-privado-con-google.md). [Guía oficial de Google en Better Auth](https://better-auth.com/docs/authentication/google) y [configuración de sesiones](https://better-auth.com/docs/concepts/session-management).
 

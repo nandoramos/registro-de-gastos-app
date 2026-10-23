@@ -14,6 +14,13 @@ export type ExpenseInput = {
   currency: AccountCurrency;
 };
 
+export type ExpenseRevision = {
+  id: string;
+  previous: ExpenseInput;
+  current: ExpenseInput;
+  changedAt: Date;
+};
+
 export type ExpenseDetail = Omit<ExpenseInput, "accountId" | "categoryId"> & {
   id: string;
   account: { id: string; name: string; currency: AccountCurrency };
@@ -23,6 +30,7 @@ export type ExpenseDetail = Omit<ExpenseInput, "accountId" | "categoryId"> & {
     receivedAt: Date;
     original: Record<string, unknown>;
   };
+  history: ExpenseRevision[];
 };
 
 export type ExpenseValidationError =
