@@ -75,8 +75,10 @@ export default async function TransferDetailPage({
         <section className="mt-8 rounded-2xl bg-stone-100 p-6">
           <h2 className="text-xl font-semibold">Evidencia original</h2>
           <p className="mt-3 text-sm text-stone-600">
-            Entrada manual recibida el{" "}
-            {transfer.evidence.receivedAt.toLocaleString("es-UY")}.
+            {transfer.evidence.type === "email"
+              ? "Texto de email recibido"
+              : "Entrada manual recibida"}{" "}
+            el {transfer.evidence.receivedAt.toLocaleString("es-UY")}.
           </p>
           <pre className="mt-5 overflow-x-auto rounded-xl bg-stone-900 p-4 text-xs text-stone-100">
             {JSON.stringify(transfer.evidence.original, null, 2)}

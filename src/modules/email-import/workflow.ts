@@ -40,6 +40,28 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
   const original = { text: input.text };
   const parsed = parseItauEmailText(input.text);
 
+  if (parsed.kind === "bank-transfer" && !input.nature) {
+    return {
+      kind: "pending" as const,
+      entry: await createPendingEntry(
+        db,
+        userId,
+        original,
+        {
+          entryType: "email-transfer-choice",
+          operationDate: parsed.fields.operationDate,
+          operationTime: parsed.fields.operationTime,
+          title: parsed.fields.recipient,
+          amount: parsed.fields.amount,
+          currency: parsed.fields.currency,
+          accountId: input.accountId,
+        },
+        ["FINANCIAL_NATURE_REQUIRED", ...parserIssues(parsed.issues)],
+        "email",
+      ),
+    };
+  }
+
   if (parsed.kind === "bank-transfer" && input.nature === "own-transfer") {
     const candidate = {
       entryType: "own-transfer",
@@ -85,13 +107,10 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
     currency: parsed.fields.currency,
   };
   const analysis = analyzePendingExpense(candidate);
-  const unresolvedNature =
-    parsed.kind === "bank-transfer" && input.nature !== "expense";
   const issues = [
     ...new Set([
       ...(analysis.complete ? [] : analysis.issues),
       ...parserIssues(parsed.issues),
-      ...(unresolvedNature ? ["FINANCIAL_NATURE_REQUIRED"] : []),
     ]),
   ];
   if (!analysis.complete || issues.length > 0) {

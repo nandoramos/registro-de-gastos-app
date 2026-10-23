@@ -9,6 +9,7 @@ import {
   parseItauEmailText,
 } from "@/modules/email-import/itau-parser";
 import { Button } from "@/components/ui/button";
+import { pendingIssueLabel } from "@/modules/pending-entries/domain";
 
 export function EmailIngestionForm({
   accounts,
@@ -72,7 +73,7 @@ export function EmailIngestionForm({
         <h2 className="text-xl font-semibold">Entrada pendiente</h2>
         <ul className="mt-3 list-disc pl-5 text-sm">
           {issues.map((issue) => (
-            <li key={issue}>{issue}</li>
+            <li key={issue}>{pendingIssueLabel(issue)}</li>
           ))}
         </ul>
         <Link

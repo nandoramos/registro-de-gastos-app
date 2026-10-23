@@ -5,6 +5,8 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
 import { ingestEmailCandidate } from "@/modules/email-import/workflow";
 import { emailEntriesCollectionResponse } from "@/modules/email-import/http";
+import { reviewPendingCandidate } from "@/modules/pending-entries/workflow";
+import { getExpenseDetail } from "@/modules/expenses/service";
 
 const database = new PGlite();
 const db = drizzle(database, { schema });
@@ -34,6 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await db.delete(schema.ownTransfer);
   await db.delete(schema.expense);
   await db.delete(schema.pendingEntry);
   await db.delete(schema.sourceEvent);
@@ -44,6 +47,13 @@ beforeEach(async () => {
       id: "owner-uyu",
       userId: "email-owner",
       name: "Pesos",
+      kind: "bank",
+      currency: "UYU",
+    },
+    {
+      id: "owner-uyu-2",
+      userId: "email-owner",
+      name: "Pesos destino",
       kind: "bank",
       currency: "UYU",
     },
@@ -146,5 +156,80 @@ Importe debitado: UYU 250,00`;
       }),
     );
     expect(result.entry.issues).toContain("INVALID_DESTINATION_ACCOUNT");
+  });
+
+  it("permite resolver la naturaleza pendiente y completar ambos lados", async () => {
+    const transferText = `ITAÚ
+TRANSFERENCIA
+Fecha: 23/10/2026
+Destinatario: Cuenta propia sintética
+Importe debitado: UYU 250,00`;
+    const unresolved = await ingestEmailCandidate(db, "email-owner", {
+      text: transferText,
+      accountId: "owner-uyu",
+    });
+    expect(unresolved.kind).toBe("pending");
+    if (unresolved.kind !== "pending") throw new Error("Expected pending");
+    expect(unresolved.entry.interpretation.entryType).toBe(
+      "email-transfer-choice",
+    );
+
+    const classified = await reviewPendingCandidate(
+      db,
+      "email-owner",
+      unresolved.entry.id,
+      { nature: "own-transfer", accountId: "owner-uyu" },
+    );
+    expect(classified.kind).toBe("pending");
+
+    const completed = await reviewPendingCandidate(
+      db,
+      "email-owner",
+      unresolved.entry.id,
+      {
+        entryType: "own-transfer",
+        kind: "transfer",
+        operationDate: "2026-10-23",
+        title: "Cuenta propia sintética",
+        note: "",
+        sourceAccountId: "owner-uyu",
+        destinationAccountId: "owner-uyu-2",
+        sourceAmount: "250.00",
+        destinationAmount: "250.00",
+        currency: "UYU",
+      },
+    );
+    expect(completed.kind).toBe("registered-transfer");
+    if (completed.kind !== "registered-transfer") {
+      throw new Error("Expected transfer");
+    }
+    expect(completed.transfer.evidence).toEqual(
+      expect.objectContaining({
+        type: "email",
+        original: { text: transferText },
+      }),
+    );
+  });
+
+  it("resuelve una transferencia como un solo gasto y mantiene aislamiento", async () => {
+    const transferText = `ITAÚ
+TRANSFERENCIA
+Fecha: 23/10/2026
+Destinatario: Servicio sintético
+Importe debitado: UYU 250,00
+Precio comercial: USD 6,00`;
+    const result = await ingestEmailCandidate(db, "email-owner", {
+      text: transferText,
+      accountId: "owner-uyu",
+      categoryId: "owner-food",
+      nature: "expense",
+    });
+    expect(result.kind).toBe("registered");
+    if (result.kind !== "registered") throw new Error("Expected expense");
+    expect(result.expense.amount).toBe("250.00");
+    expect(await db.select().from(schema.expense)).toHaveLength(1);
+    expect(
+      await getExpenseDetail(db, "email-other", result.expense.id),
+    ).toBeUndefined();
   });
 });

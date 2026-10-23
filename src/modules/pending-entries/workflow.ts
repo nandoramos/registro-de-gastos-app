@@ -62,6 +62,55 @@ export async function reviewPendingCandidate<T extends PgQueryResultHKT>(
 ) {
   const existing = await getPendingEntry(db, userId, id);
   if (!existing) return { kind: "not-found" as const };
+  if (existing.interpretation.entryType === "email-transfer-choice") {
+    if (correction.nature === "own-transfer") {
+      const analysis = analyzeTransfer({
+        entryType: "own-transfer",
+        kind: "transfer",
+        operationDate: existing.interpretation.operationDate,
+        title: existing.interpretation.title,
+        note: "",
+        sourceAccountId: correction.accountId,
+        destinationAccountId: "",
+        sourceAmount: existing.interpretation.amount,
+        destinationAmount: "",
+        currency: existing.interpretation.currency,
+      });
+      const entry = await updatePendingInterpretation(
+        db,
+        userId,
+        id,
+        analysis.interpretation,
+        analysis.complete ? [] : analysis.issues,
+      );
+      return entry
+        ? { kind: "pending" as const, entry }
+        : { kind: "not-found" as const };
+    }
+    if (correction.nature === "expense") {
+      const analysis = analyzePendingExpense({
+        operationDate: existing.interpretation.operationDate,
+        operationTime: existing.interpretation.operationTime,
+        title: existing.interpretation.title,
+        note: "",
+        amount: existing.interpretation.amount,
+        currency: existing.interpretation.currency,
+        accountId: correction.accountId,
+        categoryId: correction.categoryId,
+      });
+      const entry = await updatePendingInterpretation(
+        db,
+        userId,
+        id,
+        analysis.interpretation,
+        analysis.complete ? [] : analysis.issues,
+      );
+      return entry
+        ? { kind: "pending" as const, entry }
+        : { kind: "not-found" as const };
+    }
+    return { kind: "pending" as const, entry: existing };
+  }
   if (existing.interpretation.entryType === "conversion") {
     const analysis = analyzeConversion(correction);
     if (!analysis.complete) {

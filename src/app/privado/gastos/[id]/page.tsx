@@ -119,8 +119,10 @@ export default async function ExpenseDetailPage({
         <section className="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-6">
           <h2 className="text-xl font-semibold">Evidencia y procedencia</h2>
           <p className="mt-3 text-sm text-stone-600">
-            Entrada manual recibida el{" "}
-            {expense.source.receivedAt.toLocaleString("es-UY")}. El contenido
+            {expense.source.type === "email"
+              ? "Texto de email recibido"
+              : "Entrada manual recibida"}{" "}
+            el {expense.source.receivedAt.toLocaleString("es-UY")}. El contenido
             original se conserva separado del gasto normalizado.
           </p>
           <pre className="mt-5 overflow-x-auto rounded-xl bg-stone-900 p-4 text-xs leading-5 text-stone-100">
