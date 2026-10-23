@@ -1,9 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpenseInput } from "@/modules/expenses/domain";
 import {
   getExpenseDetail,
+  validateExpenseReferences,
   type ExpensesDatabase,
 } from "@/modules/expenses/service";
 
@@ -18,19 +19,18 @@ export type PendingEntryView = {
   original: Record<string, unknown>;
 };
 
-function asPending(
-  row: typeof schema.sourceEvent.$inferSelect,
-): PendingEntryView {
-  return {
-    id: row.id,
-    status: "pending",
-    sourceType: row.sourceType,
-    receivedAt: row.receivedAt,
-    reviewedAt: row.reviewedAt,
-    interpretation: row.interpretation,
-    issues: row.issues,
-    original: row.originalPayload,
-  };
+const selection = {
+  id: schema.sourceEvent.id,
+  sourceType: schema.sourceEvent.sourceType,
+  receivedAt: schema.sourceEvent.receivedAt,
+  original: schema.sourceEvent.originalPayload,
+  reviewedAt: schema.pendingEntry.reviewedAt,
+  interpretation: schema.pendingEntry.interpretation,
+  issues: schema.pendingEntry.issues,
+};
+
+function asPending(row: Omit<PendingEntryView, "status">): PendingEntryView {
+  return { ...row, status: "pending" };
 }
 
 export async function createPendingEntry<T extends PgQueryResultHKT>(
@@ -40,19 +40,24 @@ export async function createPendingEntry<T extends PgQueryResultHKT>(
   interpretation: Record<string, unknown>,
   issues: string[],
 ): Promise<PendingEntryView> {
-  const [row] = await db
-    .insert(schema.sourceEvent)
-    .values({
-      id: crypto.randomUUID(),
+  const sourceEventId = crypto.randomUUID();
+  await db.transaction(async (transaction) => {
+    await transaction.insert(schema.sourceEvent).values({
+      id: sourceEventId,
       userId,
       sourceType: "manual",
-      status: "pending",
       originalPayload: original,
+    });
+    await transaction.insert(schema.pendingEntry).values({
+      sourceEventId,
+      userId,
       interpretation,
       issues,
-    })
-    .returning();
-  return asPending(row);
+    });
+  });
+  const entry = await getPendingEntry(db, userId, sourceEventId);
+  if (!entry) throw new Error("Created pending entry is unavailable");
+  return entry;
 }
 
 export async function listPendingEntries<T extends PgQueryResultHKT>(
@@ -60,16 +65,31 @@ export async function listPendingEntries<T extends PgQueryResultHKT>(
   userId: string,
 ): Promise<PendingEntryView[]> {
   const rows = await db
-    .select()
-    .from(schema.sourceEvent)
+    .select(selection)
+    .from(schema.pendingEntry)
+    .innerJoin(
+      schema.sourceEvent,
+      eq(schema.sourceEvent.id, schema.pendingEntry.sourceEventId),
+    )
     .where(
       and(
+        eq(schema.pendingEntry.userId, userId),
         eq(schema.sourceEvent.userId, userId),
-        eq(schema.sourceEvent.status, "pending"),
       ),
     )
     .orderBy(desc(schema.sourceEvent.receivedAt));
   return rows.map(asPending);
+}
+
+export async function countPendingEntries<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(schema.pendingEntry)
+    .where(eq(schema.pendingEntry.userId, userId));
+  return row.value;
 }
 
 export async function getPendingEntry<T extends PgQueryResultHKT>(
@@ -78,13 +98,17 @@ export async function getPendingEntry<T extends PgQueryResultHKT>(
   id: string,
 ): Promise<PendingEntryView | undefined> {
   const [row] = await db
-    .select()
-    .from(schema.sourceEvent)
+    .select(selection)
+    .from(schema.pendingEntry)
+    .innerJoin(
+      schema.sourceEvent,
+      eq(schema.sourceEvent.id, schema.pendingEntry.sourceEventId),
+    )
     .where(
       and(
-        eq(schema.sourceEvent.id, id),
+        eq(schema.pendingEntry.sourceEventId, id),
+        eq(schema.pendingEntry.userId, userId),
         eq(schema.sourceEvent.userId, userId),
-        eq(schema.sourceEvent.status, "pending"),
       ),
     );
   return row ? asPending(row) : undefined;
@@ -97,18 +121,31 @@ export async function updatePendingInterpretation<T extends PgQueryResultHKT>(
   interpretation: Record<string, unknown>,
   issues: string[],
 ): Promise<PendingEntryView | undefined> {
-  const [row] = await db
-    .update(schema.sourceEvent)
-    .set({ interpretation, issues, reviewedAt: new Date() })
-    .where(
-      and(
-        eq(schema.sourceEvent.id, id),
-        eq(schema.sourceEvent.userId, userId),
-        eq(schema.sourceEvent.status, "pending"),
-      ),
-    )
-    .returning();
-  return row ? asPending(row) : undefined;
+  const reviewedAt = new Date();
+  const updated = await db.transaction(async (transaction) => {
+    const [row] = await transaction
+      .update(schema.pendingEntry)
+      .set({ interpretation, issues, reviewedAt, updatedAt: reviewedAt })
+      .where(
+        and(
+          eq(schema.pendingEntry.sourceEventId, id),
+          eq(schema.pendingEntry.userId, userId),
+        ),
+      )
+      .returning({ id: schema.pendingEntry.sourceEventId });
+    if (!row) return false;
+    await transaction.insert(schema.sourceEventReview).values({
+      id: crypto.randomUUID(),
+      sourceEventId: id,
+      userId,
+      interpretation,
+      issues,
+      outcome: "pending",
+      createdAt: reviewedAt,
+    });
+    return true;
+  });
+  return updated ? getPendingEntry(db, userId, id) : undefined;
 }
 
 type CompleteResult =
@@ -133,31 +170,11 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
   input: ExpenseInput,
   interpretation: Record<string, unknown>,
 ): Promise<CompleteResult> {
-  const pending = await getPendingEntry(db, userId, id);
-  if (!pending) return { ok: false, error: "NOT_FOUND" };
-  const [account] = await db
-    .select({ currency: schema.financialAccount.currency })
-    .from(schema.financialAccount)
-    .where(
-      and(
-        eq(schema.financialAccount.id, input.accountId),
-        eq(schema.financialAccount.userId, userId),
-      ),
-    );
-  if (!account) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
-  if (account.currency !== input.currency) {
-    return { ok: false, error: "CURRENCY_MISMATCH" };
+  if (!(await getPendingEntry(db, userId, id))) {
+    return { ok: false, error: "NOT_FOUND" };
   }
-  const [category] = await db
-    .select({ id: schema.expenseCategory.id })
-    .from(schema.expenseCategory)
-    .where(
-      and(
-        eq(schema.expenseCategory.id, input.categoryId),
-        eq(schema.expenseCategory.userId, userId),
-      ),
-    );
-  if (!category) return { ok: false, error: "CATEGORY_NOT_FOUND" };
+  const references = await validateExpenseReferences(db, userId, input);
+  if (!references.ok) return references;
 
   const expenseId = crypto.randomUUID();
   const reviewedAt = new Date();
@@ -175,19 +192,21 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
       amount: input.amount,
       currency: input.currency,
     });
+    await transaction.insert(schema.sourceEventReview).values({
+      id: crypto.randomUUID(),
+      sourceEventId: id,
+      userId,
+      interpretation,
+      issues: [],
+      outcome: "registered",
+      createdAt: reviewedAt,
+    });
     await transaction
-      .update(schema.sourceEvent)
-      .set({
-        status: "registered",
-        interpretation,
-        issues: [],
-        reviewedAt,
-      })
+      .delete(schema.pendingEntry)
       .where(
         and(
-          eq(schema.sourceEvent.id, id),
-          eq(schema.sourceEvent.userId, userId),
-          eq(schema.sourceEvent.status, "pending"),
+          eq(schema.pendingEntry.sourceEventId, id),
+          eq(schema.pendingEntry.userId, userId),
         ),
       );
   });

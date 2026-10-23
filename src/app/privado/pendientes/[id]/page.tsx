@@ -5,7 +5,10 @@ import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
 import { listCategories } from "@/modules/categories/service";
-import { getPendingEntry } from "@/modules/pending-entries/service";
+import {
+  countPendingEntries,
+  getPendingEntry,
+} from "@/modules/pending-entries/service";
 
 export const dynamic = "force-dynamic";
 export default async function PendingEntryPage({
@@ -15,16 +18,17 @@ export default async function PendingEntryPage({
 }) {
   const access = await requireAuthorizedPage();
   const db = getAuthRuntime().db;
-  const [entry, accounts, categories] = await Promise.all([
+  const [entry, accounts, categories, pendingCount] = await Promise.all([
     getPendingEntry(db, access.userId, (await params).id),
     listAccounts(db, access.userId),
     listCategories(db, access.userId),
+    countPendingEntries(db, access.userId),
   ]);
   if (!entry) notFound();
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-6 py-10">
       <Link href="/privado/pendientes" className="font-semibold underline">
-        Volver a pendientes
+        Volver a pendientes ({pendingCount})
       </Link>
       <h1 className="mt-10 text-4xl font-semibold">Completar entrada</h1>
       <div className="mt-8 rounded-2xl border bg-white p-6">

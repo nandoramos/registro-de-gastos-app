@@ -4,26 +4,13 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
+import { pendingIssueLabel } from "@/modules/pending-entries/domain";
 import { Button } from "@/components/ui/button";
 
 type Entry = {
   id: string;
   interpretation: Record<string, unknown>;
   issues: string[];
-};
-
-const issueLabels: Record<string, string> = {
-  INVALID_DATE: "Falta una fecha válida.",
-  INVALID_TIME: "La hora no es válida.",
-  INVALID_TITLE: "Falta un título válido.",
-  INVALID_NOTE: "La nota es demasiado extensa.",
-  INVALID_AMOUNT: "Falta un importe positivo con hasta 2 decimales.",
-  INVALID_ACCOUNT: "Falta la cuenta de origen.",
-  INVALID_CATEGORY: "Falta la categoría.",
-  INVALID_CURRENCY: "Falta una moneda válida.",
-  ACCOUNT_NOT_FOUND: "La cuenta elegida no está disponible.",
-  CATEGORY_NOT_FOUND: "La categoría elegida no está disponible.",
-  CURRENCY_MISMATCH: "La moneda no coincide con la cuenta.",
 };
 
 function text(value: unknown) {
@@ -102,7 +89,7 @@ export function PendingEntryForm({
         <p className="font-semibold">Falta resolver:</p>
         <ul className="mt-2 list-disc pl-5">
           {issues.map((issue) => (
-            <li key={issue}>{issueLabels[issue] ?? issue}</li>
+            <li key={issue}>{pendingIssueLabel(issue)}</li>
           ))}
         </ul>
       </div>

@@ -85,12 +85,17 @@ type RegistrationResult =
       error: "ACCOUNT_NOT_FOUND" | "CATEGORY_NOT_FOUND" | "CURRENCY_MISMATCH";
     };
 
-export async function registerManualExpense<T extends PgQueryResultHKT>(
+export async function validateExpenseReferences<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
   userId: string,
   input: ExpenseInput,
-  original: Record<string, unknown>,
-): Promise<RegistrationResult> {
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      error: "ACCOUNT_NOT_FOUND" | "CATEGORY_NOT_FOUND" | "CURRENCY_MISMATCH";
+    }
+> {
   const [account] = await db
     .select({
       id: schema.financialAccount.id,
@@ -107,7 +112,6 @@ export async function registerManualExpense<T extends PgQueryResultHKT>(
   if (account.currency !== input.currency) {
     return { ok: false, error: "CURRENCY_MISMATCH" };
   }
-
   const [category] = await db
     .select({ id: schema.expenseCategory.id })
     .from(schema.expenseCategory)
@@ -117,7 +121,17 @@ export async function registerManualExpense<T extends PgQueryResultHKT>(
         eq(schema.expenseCategory.userId, userId),
       ),
     );
-  if (!category) return { ok: false, error: "CATEGORY_NOT_FOUND" };
+  return category ? { ok: true } : { ok: false, error: "CATEGORY_NOT_FOUND" };
+}
+
+export async function registerManualExpense<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  input: ExpenseInput,
+  original: Record<string, unknown>,
+): Promise<RegistrationResult> {
+  const references = await validateExpenseReferences(db, userId, input);
+  if (!references.ok) return references;
 
   const sourceEventId = crypto.randomUUID();
   const expenseId = crypto.randomUUID();

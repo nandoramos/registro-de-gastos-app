@@ -38,6 +38,24 @@ export type PendingAnalysis =
       interpretation: Record<string, unknown>;
     };
 
+const issueLabels: Record<string, string> = {
+  INVALID_DATE: "Falta una fecha válida.",
+  INVALID_TIME: "La hora no es válida.",
+  INVALID_TITLE: "Falta un título válido.",
+  INVALID_NOTE: "La nota es demasiado extensa.",
+  INVALID_AMOUNT: "Falta un importe positivo con hasta 2 decimales.",
+  INVALID_ACCOUNT: "Falta la cuenta de origen.",
+  INVALID_CATEGORY: "Falta la categoría.",
+  INVALID_CURRENCY: "Falta una moneda válida.",
+  ACCOUNT_NOT_FOUND: "La cuenta elegida no está disponible.",
+  CATEGORY_NOT_FOUND: "La categoría elegida no está disponible.",
+  CURRENCY_MISMATCH: "La moneda no coincide con la cuenta.",
+};
+
+export function pendingIssueLabel(issue: string): string {
+  return issueLabels[issue] ?? issue;
+}
+
 export function recordFromUnknown(
   input: unknown,
 ): Record<string, unknown> | undefined {

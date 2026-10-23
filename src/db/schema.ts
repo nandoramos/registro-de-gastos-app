@@ -164,26 +164,62 @@ export const sourceEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     sourceType: text("source_type").$type<"manual">().notNull(),
-    status: text("status")
-      .$type<"pending" | "registered">()
-      .notNull()
-      .default("registered"),
     originalPayload: jsonb("original_payload")
       .$type<Record<string, unknown>>()
       .notNull(),
-    interpretation: jsonb("interpretation")
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
-    issues: jsonb("issues").$type<string[]>().notNull().default([]),
     receivedAt: timestamp("received_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   },
   (table) => [
     index("source_event_user_idx").on(table.userId),
     check("source_event_type_allowed", sql`${table.sourceType} in ('manual')`),
+  ],
+);
+
+export const pendingEntry = pgTable(
+  "pending_entry",
+  {
+    sourceEventId: text("source_event_id")
+      .primaryKey()
+      .references(() => sourceEvent.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    interpretation: jsonb("interpretation")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    issues: jsonb("issues").$type<string[]>().notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("pending_entry_user_idx").on(table.userId)],
+);
+
+export const sourceEventReview = pgTable(
+  "source_event_review",
+  {
+    id: text("id").primaryKey(),
+    sourceEventId: text("source_event_id")
+      .notNull()
+      .references(() => sourceEvent.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    interpretation: jsonb("interpretation")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    issues: jsonb("issues").$type<string[]>().notNull(),
+    outcome: text("outcome").$type<"pending" | "registered">().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("source_event_review_event_idx").on(table.sourceEventId),
+    index("source_event_review_user_idx").on(table.userId),
   ],
 );
 

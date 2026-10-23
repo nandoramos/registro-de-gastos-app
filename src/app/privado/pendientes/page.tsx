@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listPendingEntries } from "@/modules/pending-entries/service";
+import { pendingIssueLabel } from "@/modules/pending-entries/domain";
 
 export const dynamic = "force-dynamic";
 export default async function PendingEntriesPage() {
@@ -28,7 +29,7 @@ export default async function PendingEntriesPage() {
               {String(entry.interpretation.title || "Entrada sin título")}
             </Link>
             <p className="mt-2 text-sm text-stone-600">
-              {entry.issues.length} dato(s) por resolver
+              {entry.issues.map(pendingIssueLabel).join(" · ")}
             </p>
           </li>
         ))}

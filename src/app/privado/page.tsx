@@ -1,9 +1,15 @@
 import { requireAuthorizedPage } from "@/modules/auth/page";
+import { getAuthRuntime } from "@/modules/auth/server";
+import { countPendingEntries } from "@/modules/pending-entries/service";
 import { SignOutButton } from "@/components/auth-buttons";
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 export default async function PrivateHome() {
-  await requireAuthorizedPage();
+  const access = await requireAuthorizedPage();
+  const pendingCount = await countPendingEntries(
+    getAuthRuntime().db,
+    access.userId,
+  );
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-6 py-8 sm:px-12 sm:py-12">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-7">
@@ -32,7 +38,7 @@ export default async function PrivateHome() {
             href="/privado/pendientes"
             className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >
-            Ver pendientes
+            Ver pendientes ({pendingCount})
           </Link>
           <Link
             href="/privado/cuentas"

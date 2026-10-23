@@ -36,6 +36,13 @@
       "when": 1792712051590,
       "tag": "0004_eager_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792756141033,
+      "tag": "0005_clammy_dagger",
+      "breakpoints": true
     }
   ]
 }

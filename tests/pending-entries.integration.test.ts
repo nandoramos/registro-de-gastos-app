@@ -162,6 +162,14 @@ describe("entradas pendientes", () => {
       ownerAccess,
     );
     const { id } = await created.json();
+    await pendingEntryResourceResponse(
+      request("/api/pending-entries/" + id, "PATCH", {
+        title: "Primera corrección todavía incompleta",
+      }),
+      id,
+      db,
+      ownerAccess,
+    );
     const complete = {
       operationDate: "2026-10-20",
       operationTime: "",
@@ -195,7 +203,14 @@ describe("entradas pendientes", () => {
 
     const [event] = await db.select().from(schema.sourceEvent);
     expect(event.originalPayload).toEqual(original);
-    expect(event.status).toBe("registered");
+    const reviews = await db.select().from(schema.sourceEventReview);
+    expect(reviews).toHaveLength(2);
+    expect(reviews.map((review) => review.outcome)).toEqual([
+      "pending",
+      "registered",
+    ]);
+    expect(reviews[1].interpretation).toEqual(complete);
+    expect(await db.select().from(schema.pendingEntry)).toHaveLength(0);
     expect(await db.select().from(schema.expense)).toHaveLength(1);
 
     const listed = await pendingEntriesCollectionResponse(

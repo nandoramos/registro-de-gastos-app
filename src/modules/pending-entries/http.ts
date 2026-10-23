@@ -1,17 +1,9 @@
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { GetAccess } from "@/modules/auth/http";
-import {
-  registerManualExpense,
-  type ExpensesDatabase,
-} from "@/modules/expenses/service";
-import { analyzePendingExpense, recordFromUnknown } from "./domain";
-import {
-  completePendingEntry,
-  createPendingEntry,
-  getPendingEntry,
-  listPendingEntries,
-  updatePendingInterpretation,
-} from "./service";
+import type { ExpensesDatabase } from "@/modules/expenses/service";
+import { recordFromUnknown } from "./domain";
+import { getPendingEntry, listPendingEntries } from "./service";
+import { ingestManualCandidate, reviewPendingCandidate } from "./workflow";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -59,34 +51,10 @@ export async function pendingEntriesCollectionResponse<
         { status: 422, headers },
       );
     }
-    const analysis = analyzePendingExpense(original);
-    if (analysis.complete) {
-      const result = await registerManualExpense(
-        db,
-        access.userId,
-        analysis.expense,
-        original,
-      );
-      if (!result.ok) {
-        const pending = await createPendingEntry(
-          db,
-          access.userId,
-          original,
-          analysis.interpretation,
-          [result.error],
-        );
-        return Response.json(pending, { status: 202, headers });
-      }
-      return Response.json(result.expense, { status: 201, headers });
-    }
-    const pending = await createPendingEntry(
-      db,
-      access.userId,
-      original,
-      analysis.interpretation,
-      analysis.issues,
-    );
-    return Response.json(pending, { status: 202, headers });
+    const result = await ingestManualCandidate(db, access.userId, original);
+    return result.kind === "registered"
+      ? Response.json(result.expense, { status: 201, headers })
+      : Response.json(result.entry, { status: 202, headers });
   } catch {
     return Response.json(
       { error: "SERVICE_UNAVAILABLE" },
@@ -123,44 +91,23 @@ export async function pendingEntryResourceResponse<T extends PgQueryResultHKT>(
         { status: 422, headers },
       );
     }
-    const analysis = analyzePendingExpense(correction);
-    if (!analysis.complete) {
-      const pending = await updatePendingInterpretation(
-        db,
-        access.userId,
-        id,
-        analysis.interpretation,
-        analysis.issues,
-      );
-      return pending
-        ? Response.json(pending, { headers })
-        : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
-    }
-    const completed = await completePendingEntry(
+    const result = await reviewPendingCandidate(
       db,
       access.userId,
       id,
-      analysis.expense,
-      analysis.interpretation,
+      correction,
     );
-    if (!completed.ok) {
-      if (completed.error === "NOT_FOUND") {
-        return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
-      }
-      const pending = await updatePendingInterpretation(
-        db,
-        access.userId,
-        id,
-        analysis.interpretation,
-        [completed.error],
-      );
-      return Response.json(pending, { headers });
+    if (result.kind === "not-found") {
+      return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
+    if (result.kind === "pending") {
+      return Response.json(result.entry, { headers });
     }
     return Response.json(
       {
         status: "registered",
-        reviewedAt: completed.reviewedAt,
-        expense: completed.expense,
+        reviewedAt: result.reviewedAt,
+        expense: result.expense,
       },
       { status: 201, headers },
     );
