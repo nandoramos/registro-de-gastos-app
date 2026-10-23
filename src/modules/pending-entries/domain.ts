@@ -50,6 +50,11 @@ const issueLabels: Record<string, string> = {
   ACCOUNT_NOT_FOUND: "La cuenta elegida no está disponible.",
   CATEGORY_NOT_FOUND: "La categoría elegida no está disponible.",
   CURRENCY_MISMATCH: "La moneda no coincide con la cuenta.",
+  FINANCIAL_NATURE_REQUIRED:
+    "Indicá si la transferencia es un gasto o un traslado propio.",
+  UNSUPPORTED_FORMAT: "El texto no coincide con un formato cubierto.",
+  CONTRADICTORY_FORMAT: "El texto contiene tipos de operación incompatibles.",
+  CONTRADICTORY_FIELD: "Un campo aparece con valores distintos.",
 };
 
 export function pendingIssueLabel(issue: string): string {

@@ -1,0 +1,2 @@
+ALTER TABLE "source_event" DROP CONSTRAINT "source_event_type_allowed";--> statement-breakpoint
+ALTER TABLE "source_event" ADD CONSTRAINT "source_event_type_allowed" CHECK ("source_event"."source_type" in ('manual', 'email'));

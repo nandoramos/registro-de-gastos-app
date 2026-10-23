@@ -21,7 +21,7 @@ import {
 export type PendingEntryView = {
   id: string;
   status: "pending";
-  sourceType: "manual";
+  sourceType: "manual" | "email";
   receivedAt: Date;
   reviewedAt: Date | null;
   interpretation: Record<string, unknown>;
@@ -49,13 +49,14 @@ export async function createPendingEntry<T extends PgQueryResultHKT>(
   original: Record<string, unknown>,
   interpretation: Record<string, unknown>,
   issues: string[],
+  sourceType: "manual" | "email" = "manual",
 ): Promise<PendingEntryView> {
   const sourceEventId = crypto.randomUUID();
   await db.transaction(async (transaction) => {
     await transaction.insert(schema.sourceEvent).values({
       id: sourceEventId,
       userId,
-      sourceType: "manual",
+      sourceType,
       originalPayload: original,
     });
     await transaction.insert(schema.pendingEntry).values({

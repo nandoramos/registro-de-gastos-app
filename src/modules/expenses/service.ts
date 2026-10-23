@@ -146,6 +146,16 @@ export async function registerManualExpense<T extends PgQueryResultHKT>(
   input: ExpenseInput,
   original: Record<string, unknown>,
 ): Promise<RegistrationResult> {
+  return registerExpense(db, userId, input, original, "manual");
+}
+
+export async function registerExpense<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  input: ExpenseInput,
+  original: Record<string, unknown>,
+  sourceType: "manual" | "email",
+): Promise<RegistrationResult> {
   const references = await validateExpenseReferences(db, userId, input);
   if (!references.ok) return references;
 
@@ -155,7 +165,7 @@ export async function registerManualExpense<T extends PgQueryResultHKT>(
     await transaction.insert(schema.sourceEvent).values({
       id: sourceEventId,
       userId,
-      sourceType: "manual",
+      sourceType,
       originalPayload: original,
     });
     await transaction.insert(schema.expense).values({

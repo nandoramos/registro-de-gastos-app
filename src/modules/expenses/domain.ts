@@ -26,7 +26,7 @@ export type ExpenseDetail = Omit<ExpenseInput, "accountId" | "categoryId"> & {
   account: { id: string; name: string; currency: AccountCurrency };
   category: { id: string; name: string };
   source: {
-    type: "manual";
+    type: "manual" | "email";
     receivedAt: Date;
     original: Record<string, unknown>;
   };

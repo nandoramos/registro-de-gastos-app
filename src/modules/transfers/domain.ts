@@ -51,7 +51,7 @@ export type TransferDetail = Omit<
     currency: AccountCurrency;
   };
   evidence: {
-    type: "manual";
+    type: "manual" | "email";
     receivedAt: Date;
     original: Record<string, unknown>;
   };

@@ -59,6 +59,12 @@ export default async function PrivateHome() {
             Probar interpretación
           </Link>
           <Link
+            href="/privado/emails/nuevo"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+          >
+            Ingresar texto de email
+          </Link>
+          <Link
             href="/privado/descartadas"
             className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >

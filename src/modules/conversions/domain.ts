@@ -46,7 +46,7 @@ export type ConversionDetail = Omit<
   effectiveRateDisplay: string;
   institution: { kind: ConversionInstitutionKind; name: string } | null;
   evidence: {
-    type: "manual";
+    type: "manual" | "email";
     receivedAt: Date;
     original: Record<string, unknown>;
   };

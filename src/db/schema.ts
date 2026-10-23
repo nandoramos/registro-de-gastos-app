@@ -164,7 +164,7 @@ export const sourceEvent = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    sourceType: text("source_type").$type<"manual">().notNull(),
+    sourceType: text("source_type").$type<"manual" | "email">().notNull(),
     originalPayload: jsonb("original_payload")
       .$type<Record<string, unknown>>()
       .notNull(),
@@ -174,7 +174,10 @@ export const sourceEvent = pgTable(
   },
   (table) => [
     index("source_event_user_idx").on(table.userId),
-    check("source_event_type_allowed", sql`${table.sourceType} in ('manual')`),
+    check(
+      "source_event_type_allowed",
+      sql`${table.sourceType} in ('manual', 'email')`,
+    ),
   ],
 );
 
