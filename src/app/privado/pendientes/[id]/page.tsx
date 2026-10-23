@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PendingEntryForm } from "@/components/pending-entry-form";
+import { EntryStatusActions } from "@/components/entry-status-actions";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
@@ -37,6 +38,9 @@ export default async function PendingEntryPage({
           accounts={accounts}
           categories={categories}
         />
+      </div>
+      <div className="mt-6">
+        <EntryStatusActions entryId={entry.id} status="pending" />
       </div>
       <section className="mt-8 rounded-2xl bg-stone-100 p-6">
         <h2 className="font-semibold">Evidencia original</h2>

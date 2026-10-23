@@ -186,11 +186,16 @@ export const pendingEntry = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    status: text("status")
+      .$type<"pending" | "discarded">()
+      .notNull()
+      .default("pending"),
     interpretation: jsonb("interpretation")
       .$type<Record<string, unknown>>()
       .notNull(),
     issues: jsonb("issues").$type<string[]>().notNull(),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    discardedAt: timestamp("discarded_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -212,7 +217,9 @@ export const sourceEventReview = pgTable(
       .$type<Record<string, unknown>>()
       .notNull(),
     issues: jsonb("issues").$type<string[]>().notNull(),
-    outcome: text("outcome").$type<"pending" | "registered">().notNull(),
+    outcome: text("outcome")
+      .$type<"pending" | "registered" | "discarded" | "recovered">()
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

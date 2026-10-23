@@ -41,6 +41,12 @@ export default async function PrivateHome() {
             Ver pendientes ({pendingCount})
           </Link>
           <Link
+            href="/privado/descartadas"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+          >
+            Ver descartadas
+          </Link>
+          <Link
             href="/privado/cuentas"
             className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >

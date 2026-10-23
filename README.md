@@ -1,6 +1,6 @@
 # Registro de Gastos
 
-App personal privada. Están implementados el [ticket #2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2), el [ticket #3: crear y renombrar cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3), el [ticket #4: categorías iniciales y ampliables](https://github.com/nandoramos/registro-de-gastos-app/issues/4) y el [ticket #5: registrar un gasto manual completo](https://github.com/nandoramos/registro-de-gastos-app/issues/5). Los reportes y las demás fuentes de carga se implementarán en tickets posteriores.
+App personal privada. Están implementados los tickets [#2: acceso privado con Google](https://github.com/nandoramos/registro-de-gastos-app/issues/2), [#3: cuentas](https://github.com/nandoramos/registro-de-gastos-app/issues/3), [#4: categorías](https://github.com/nandoramos/registro-de-gastos-app/issues/4), [#5: gasto manual](https://github.com/nandoramos/registro-de-gastos-app/issues/5), [#6: completar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/6) y [#7: descartar y recuperar pendientes](https://github.com/nandoramos/registro-de-gastos-app/issues/7). Los reportes y las demás fuentes de carga se implementarán en tickets posteriores.
 
 ## Ejecutar localmente
 

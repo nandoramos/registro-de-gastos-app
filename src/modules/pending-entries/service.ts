@@ -74,6 +74,7 @@ export async function listPendingEntries<T extends PgQueryResultHKT>(
     .where(
       and(
         eq(schema.pendingEntry.userId, userId),
+        eq(schema.pendingEntry.status, "pending"),
         eq(schema.sourceEvent.userId, userId),
       ),
     )
@@ -88,7 +89,12 @@ export async function countPendingEntries<T extends PgQueryResultHKT>(
   const [row] = await db
     .select({ value: count() })
     .from(schema.pendingEntry)
-    .where(eq(schema.pendingEntry.userId, userId));
+    .where(
+      and(
+        eq(schema.pendingEntry.userId, userId),
+        eq(schema.pendingEntry.status, "pending"),
+      ),
+    );
   return row.value;
 }
 
@@ -108,6 +114,7 @@ export async function getPendingEntry<T extends PgQueryResultHKT>(
       and(
         eq(schema.pendingEntry.sourceEventId, id),
         eq(schema.pendingEntry.userId, userId),
+        eq(schema.pendingEntry.status, "pending"),
         eq(schema.sourceEvent.userId, userId),
       ),
     );
@@ -130,6 +137,7 @@ export async function updatePendingInterpretation<T extends PgQueryResultHKT>(
         and(
           eq(schema.pendingEntry.sourceEventId, id),
           eq(schema.pendingEntry.userId, userId),
+          eq(schema.pendingEntry.status, "pending"),
         ),
       )
       .returning({ id: schema.pendingEntry.sourceEventId });
@@ -178,7 +186,18 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
 
   const expenseId = crypto.randomUUID();
   const reviewedAt = new Date();
-  await db.transaction(async (transaction) => {
+  const completed = await db.transaction(async (transaction) => {
+    const [claimed] = await transaction
+      .delete(schema.pendingEntry)
+      .where(
+        and(
+          eq(schema.pendingEntry.sourceEventId, id),
+          eq(schema.pendingEntry.userId, userId),
+          eq(schema.pendingEntry.status, "pending"),
+        ),
+      )
+      .returning({ id: schema.pendingEntry.sourceEventId });
+    if (!claimed) return false;
     await transaction.insert(schema.expense).values({
       id: expenseId,
       userId,
@@ -201,15 +220,9 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
       outcome: "registered",
       createdAt: reviewedAt,
     });
-    await transaction
-      .delete(schema.pendingEntry)
-      .where(
-        and(
-          eq(schema.pendingEntry.sourceEventId, id),
-          eq(schema.pendingEntry.userId, userId),
-        ),
-      );
+    return true;
   });
+  if (!completed) return { ok: false, error: "NOT_FOUND" };
   const expense = await getExpenseDetail(db, userId, expenseId);
   if (!expense) throw new Error("Completed expense is unavailable");
   return { ok: true, reviewedAt, expense };
