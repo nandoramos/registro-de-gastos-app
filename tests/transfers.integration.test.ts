@@ -187,6 +187,41 @@ describe("transferencias propias y retiros", () => {
     expect(await db.select().from(schema.ownTransfer)).toHaveLength(0);
   });
 
+  it("mantiene el tipo de pendiente aunque falte la clase de transferencia", async () => {
+    const withoutKind: Record<string, unknown> = { ...completeTransfer };
+    delete withoutKind.kind;
+    const created = await transfersCollectionResponse(
+      request("/api/transfers", "POST", withoutKind),
+      db,
+      ownerAccess,
+    );
+    expect(created.status).toBe(202);
+    const pending = await created.json();
+    expect(pending.interpretation.entryType).toBe("own-transfer");
+
+    const completed = await pendingEntryResourceResponse(
+      request(`/api/pending-entries/${pending.id}`, "PATCH", completeTransfer),
+      pending.id,
+      db,
+      ownerAccess,
+    );
+    expect(completed.status).toBe(201);
+    expect((await completed.json()).transfer.kind).toBe("transfer");
+  });
+
+  it("no registra como transferencia común un retiro hacia efectivo", async () => {
+    const response = await transfersCollectionResponse(
+      request("/api/transfers", "POST", {
+        ...completeTransfer,
+        destinationAccountId: "owner-cash",
+      }),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(202);
+    expect((await response.json()).issues).toContain("TRANSFER_KIND_MISMATCH");
+  });
+
   it("mantiene pendiente una cuenta ajena y no permite consultar otra operación", async () => {
     const foreignReference = await transfersCollectionResponse(
       request("/api/transfers", "POST", {

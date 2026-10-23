@@ -9,7 +9,8 @@ type ReferenceError =
   | "DESTINATION_ACCOUNT_NOT_FOUND"
   | "DIFFERENT_ACCOUNT_CURRENCIES"
   | "ACCOUNT_CURRENCY_MISMATCH"
-  | "INVALID_WITHDRAWAL_ACCOUNTS";
+  | "INVALID_WITHDRAWAL_ACCOUNTS"
+  | "TRANSFER_KIND_MISMATCH";
 
 export async function validateTransferReferences<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
@@ -48,6 +49,13 @@ export async function validateTransferReferences<T extends PgQueryResultHKT>(
     (source.kind !== "bank" || destination.kind !== "cash")
   ) {
     return { ok: false, error: "INVALID_WITHDRAWAL_ACCOUNTS" };
+  }
+  if (
+    input.kind === "transfer" &&
+    source.kind === "bank" &&
+    destination.kind === "cash"
+  ) {
+    return { ok: false, error: "TRANSFER_KIND_MISMATCH" };
   }
   return { ok: true };
 }

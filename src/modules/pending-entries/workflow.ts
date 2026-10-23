@@ -60,10 +60,7 @@ export async function reviewPendingCandidate<T extends PgQueryResultHKT>(
 ) {
   const existing = await getPendingEntry(db, userId, id);
   if (!existing) return { kind: "not-found" as const };
-  if (
-    existing.interpretation.kind === "transfer" ||
-    existing.interpretation.kind === "withdrawal"
-  ) {
+  if (existing.interpretation.entryType === "own-transfer") {
     const analysis = analyzeTransfer(correction);
     if (!analysis.complete) {
       const entry = await updatePendingInterpretation(

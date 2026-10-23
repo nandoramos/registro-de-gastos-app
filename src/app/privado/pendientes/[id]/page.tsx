@@ -34,8 +34,7 @@ export default async function PendingEntryPage({
       </Link>
       <h1 className="mt-10 text-4xl font-semibold">Completar entrada</h1>
       <div className="mt-8 rounded-2xl border bg-white p-6">
-        {entry.interpretation.kind === "transfer" ||
-        entry.interpretation.kind === "withdrawal" ? (
+        {entry.interpretation.entryType === "own-transfer" ? (
           <TransferForm entry={entry} accounts={accounts} />
         ) : (
           <PendingEntryForm

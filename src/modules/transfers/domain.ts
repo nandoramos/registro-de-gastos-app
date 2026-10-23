@@ -97,11 +97,14 @@ export type TransferAnalysis =
 export function analyzeTransfer(
   input: Record<string, unknown>,
 ): TransferAnalysis {
-  const interpretation = Object.fromEntries(
-    fields
-      .filter((field) => input[field] !== undefined)
-      .map((field) => [field, input[field]]),
-  );
+  const interpretation = {
+    entryType: "own-transfer",
+    ...Object.fromEntries(
+      fields
+        .filter((field) => input[field] !== undefined)
+        .map((field) => [field, input[field]]),
+    ),
+  };
   const issues: TransferIssue[] = [];
   const kind = input.kind;
   if (kind !== "transfer" && kind !== "withdrawal") {
@@ -175,6 +178,8 @@ const issueLabels: Record<string, string> = {
     "Las conversiones entre monedas se registran por separado.",
   INVALID_WITHDRAWAL_ACCOUNTS:
     "Un retiro debe salir de una cuenta bancaria y llegar a efectivo.",
+  TRANSFER_KIND_MISMATCH:
+    "Un movimiento de banco a efectivo debe registrarse como retiro.",
 };
 
 export function transferIssueLabel(issue: string): string {
