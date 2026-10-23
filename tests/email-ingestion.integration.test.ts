@@ -64,6 +64,13 @@ beforeEach(async () => {
       kind: "bank",
       currency: "UYU",
     },
+    {
+      id: "other-usd",
+      userId: "email-other",
+      name: "Dólares ajenos",
+      kind: "bank",
+      currency: "USD",
+    },
   ]);
   await db.insert(schema.expenseCategory).values({
     id: "owner-food",
@@ -131,6 +138,71 @@ describe("ingesta de texto de email", () => {
     expect(foreign.kind).toBe("pending");
     if (foreign.kind !== "pending") throw new Error("Expected pending");
     expect(foreign.entry.issues).toContain("ACCOUNT_NOT_FOUND");
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+  });
+
+  it("asigna solo una cuenta propia inequívoca por la moneda explícita", async () => {
+    const usdText = `ITAÚ
+COMPRA CON DÉBITO
+Fecha: 24/10/2026
+Comercio: Comercio en dólares
+Importe debitado: USD 20,00`;
+    const withoutOwnCandidate = await ingestEmailCandidate(db, "email-owner", {
+      text: usdText,
+      categoryId: "owner-food",
+      nature: "expense",
+    });
+    expect(withoutOwnCandidate.kind).toBe("pending");
+    if (withoutOwnCandidate.kind !== "pending") {
+      throw new Error("Expected pending");
+    }
+    expect(withoutOwnCandidate.entry.issues).toContain("INVALID_ACCOUNT");
+
+    await db.insert(schema.financialAccount).values({
+      id: "owner-usd",
+      userId: "email-owner",
+      name: "Dólares propios",
+      kind: "bank",
+      currency: "USD",
+    });
+    const assigned = await ingestEmailCandidate(db, "email-owner", {
+      text: usdText,
+      categoryId: "owner-food",
+      nature: "expense",
+    });
+    expect(assigned.kind).toBe("registered");
+    if (assigned.kind !== "registered") throw new Error("Expected expense");
+    expect(assigned.expense.account.id).toBe("owner-usd");
+  });
+
+  it("no asigna automáticamente entre varias cuentas propias candidatas", async () => {
+    const result = await ingestEmailCandidate(db, "email-owner", {
+      text,
+      categoryId: "owner-food",
+      nature: "expense",
+    });
+    expect(result.kind).toBe("pending");
+    if (result.kind !== "pending") throw new Error("Expected pending");
+    expect(result.entry.issues).toContain("INVALID_ACCOUNT");
+  });
+
+  it("mantiene pendiente una cuenta elegida con moneda contradictoria", async () => {
+    await db.insert(schema.financialAccount).values({
+      id: "owner-usd",
+      userId: "email-owner",
+      name: "Dólares propios",
+      kind: "bank",
+      currency: "USD",
+    });
+    const result = await ingestEmailCandidate(db, "email-owner", {
+      text,
+      accountId: "owner-usd",
+      categoryId: "owner-food",
+      nature: "expense",
+    });
+    expect(result.kind).toBe("pending");
+    if (result.kind !== "pending") throw new Error("Expected pending");
+    expect(result.entry.issues).toContain("CURRENCY_MISMATCH");
     expect(await db.select().from(schema.expense)).toHaveLength(0);
   });
 

@@ -7,6 +7,8 @@ import { analyzePendingExpense } from "@/modules/pending-entries/domain";
 import { createPendingEntry } from "@/modules/pending-entries/service";
 import { analyzeTransfer } from "@/modules/transfers/domain";
 import { parseItauEmailText } from "./itau-parser";
+import { listAccounts } from "@/modules/accounts/service";
+import { suggestAccountFromCurrency } from "./account-assignment";
 
 export type EmailCandidateInput = {
   text: string;
@@ -39,6 +41,14 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
 ) {
   const original = { text: input.text };
   const parsed = parseItauEmailText(input.text);
+  const accounts = await listAccounts(db, userId);
+  const suggestion = suggestAccountFromCurrency(
+    accounts,
+    parsed.fields.currency,
+  );
+  const accountId =
+    input.accountId ||
+    (suggestion.status === "assigned" ? suggestion.account.id : undefined);
 
   if (parsed.kind === "bank-transfer" && !input.nature) {
     return {
@@ -54,7 +64,7 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
           title: parsed.fields.recipient,
           amount: parsed.fields.amount,
           currency: parsed.fields.currency,
-          accountId: input.accountId,
+          accountId,
         },
         ["FINANCIAL_NATURE_REQUIRED", ...parserIssues(parsed.issues)],
         "email",
@@ -70,7 +80,7 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
       operationTime: parsed.fields.operationTime,
       title: parsed.fields.recipient,
       note: "",
-      sourceAccountId: input.accountId,
+      sourceAccountId: accountId,
       destinationAccountId: "",
       sourceAmount: parsed.fields.amount,
       destinationAmount: "",
@@ -101,7 +111,7 @@ export async function ingestEmailCandidate<T extends PgQueryResultHKT>(
     title:
       parsed.kind === "expense" ? parsed.fields.title : parsed.fields.recipient,
     note: "",
-    accountId: input.accountId,
+    accountId,
     categoryId: input.categoryId,
     amount: parsed.fields.amount,
     currency: parsed.fields.currency,

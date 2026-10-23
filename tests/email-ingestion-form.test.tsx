@@ -52,3 +52,31 @@ Importe debitado: UYU 100,00`;
     ),
   ).toBe("/privado/gastos/expense-1");
 });
+
+it("muestra una asignación inequívoca y permite corregirla", async () => {
+  const user = userEvent.setup();
+  const choices = [
+    ...accounts,
+    {
+      id: "usd",
+      name: "Dólares",
+      kind: "bank" as const,
+      currency: "USD" as const,
+    },
+  ];
+  render(<EmailIngestionForm accounts={choices} categories={categories} />);
+  await user.type(
+    screen.getByLabelText("Texto del email"),
+    `ITAÚ
+COMPRA CON DÉBITO
+Fecha: 24/10/2026
+Comercio: Mercado Ejemplo
+Importe debitado: USD 20,00`,
+  );
+  const select = screen.getByLabelText("Cuenta de origen") as HTMLSelectElement;
+  expect(select.value).toBe("usd");
+  expect(screen.getByText(/Asignada automáticamente/)).toBeTruthy();
+  await user.selectOptions(select, "uyu");
+  expect(select.value).toBe("uyu");
+  expect(screen.queryByText(/Asignada automáticamente/)).toBeNull();
+});

@@ -10,6 +10,7 @@ import {
 } from "@/modules/email-import/itau-parser";
 import { Button } from "@/components/ui/button";
 import { pendingIssueLabel } from "@/modules/pending-entries/domain";
+import { suggestAccountFromCurrency } from "@/modules/email-import/account-assignment";
 
 export function EmailIngestionForm({
   accounts,
@@ -19,7 +20,7 @@ export function EmailIngestionForm({
   categories: CategoryView[];
 }) {
   const [text, setText] = useState("");
-  const [accountId, setAccountId] = useState("");
+  const [manualAccountId, setManualAccountId] = useState<string>();
   const [categoryId, setCategoryId] = useState("");
   const [nature, setNature] = useState<"" | "expense" | "own-transfer">("");
   const [pending, setPending] = useState(false);
@@ -27,6 +28,13 @@ export function EmailIngestionForm({
   const [pendingId, setPendingId] = useState<string>();
   const [issues, setIssues] = useState<string[]>([]);
   const parsed = useMemo(() => parseItauEmailText(text), [text]);
+  const accountSuggestion = useMemo(
+    () => suggestAccountFromCurrency(accounts, parsed.fields.currency),
+    [accounts, parsed.fields.currency],
+  );
+  const suggestedAccountId =
+    accountSuggestion.status === "assigned" ? accountSuggestion.account.id : "";
+  const accountId = manualAccountId ?? suggestedAccountId;
   const selectedNature = parsed.kind === "expense" ? "expense" : nature;
 
   async function submit(event: FormEvent) {
@@ -136,8 +144,9 @@ export function EmailIngestionForm({
       <label className="text-sm font-medium">
         Cuenta de origen
         <select
+          aria-label="Cuenta de origen"
           value={accountId}
-          onChange={(event) => setAccountId(event.target.value)}
+          onChange={(event) => setManualAccountId(event.target.value)}
           className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
         >
           <option value="">Elegir cuenta</option>
@@ -147,6 +156,12 @@ export function EmailIngestionForm({
             </option>
           ))}
         </select>
+        {manualAccountId === undefined && suggestedAccountId && (
+          <span className="mt-2 block text-xs text-emerald-800">
+            Asignada automáticamente por coincidencia única de moneda. Podés
+            corregirla.
+          </span>
+        )}
       </label>
       {selectedNature !== "own-transfer" && (
         <label className="text-sm font-medium">
