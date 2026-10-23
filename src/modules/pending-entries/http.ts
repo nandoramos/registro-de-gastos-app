@@ -113,6 +113,16 @@ export async function pendingEntryResourceResponse<T extends PgQueryResultHKT>(
         { status: 201, headers },
       );
     }
+    if (result.kind === "registered-conversion") {
+      return Response.json(
+        {
+          status: "registered",
+          reviewedAt: result.reviewedAt,
+          conversion: result.conversion,
+        },
+        { status: 201, headers },
+      );
+    }
     return Response.json(
       {
         status: "registered",

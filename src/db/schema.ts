@@ -364,3 +364,90 @@ export const ownTransfer = pgTable(
     ),
   ],
 );
+
+export const currencyConversion = pgTable(
+  "currency_conversion",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id")
+      .notNull()
+      .references(() => sourceEvent.id),
+    operationDate: date("operation_date", { mode: "string" }).notNull(),
+    title: text("title").notNull(),
+    note: text("note"),
+    sourceAccountId: text("source_account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    destinationAccountId: text("destination_account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    sourceAmount: numeric("source_amount", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    destinationAmount: numeric("destination_amount", {
+      precision: 18,
+      scale: 2,
+    }).notNull(),
+    sourceCurrency: text("source_currency").$type<"UYU" | "USD">().notNull(),
+    destinationCurrency: text("destination_currency")
+      .$type<"UYU" | "USD">()
+      .notNull(),
+    effectiveRate: numeric("effective_rate", {
+      precision: 30,
+      scale: 12,
+    }).notNull(),
+    institutionKind: text("institution_kind").$type<
+      "itau" | "prex" | "other"
+    >(),
+    institutionName: text("institution_name"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("currency_conversion_user_date_idx").on(
+      table.userId,
+      table.operationDate,
+    ),
+    uniqueIndex("currency_conversion_source_event_unique").on(
+      table.sourceEventId,
+    ),
+    check(
+      "currency_conversion_title_not_blank",
+      sql`btrim(${table.title}) <> ''`,
+    ),
+    check(
+      "currency_conversion_source_positive",
+      sql`${table.sourceAmount} > 0`,
+    ),
+    check(
+      "currency_conversion_destination_positive",
+      sql`${table.destinationAmount} > 0`,
+    ),
+    check("currency_conversion_rate_positive", sql`${table.effectiveRate} > 0`),
+    check(
+      "currency_conversion_currencies_different",
+      sql`${table.sourceCurrency} <> ${table.destinationCurrency}`,
+    ),
+    check(
+      "currency_conversion_currencies_allowed",
+      sql`${table.sourceCurrency} in ('UYU', 'USD') and ${table.destinationCurrency} in ('UYU', 'USD')`,
+    ),
+    check(
+      "currency_conversion_accounts_different",
+      sql`${table.sourceAccountId} <> ${table.destinationAccountId}`,
+    ),
+    check(
+      "currency_conversion_institution_allowed",
+      sql`${table.institutionKind} is null or ${table.institutionKind} in ('itau', 'prex', 'other')`,
+    ),
+    check(
+      "currency_conversion_institution_name_valid",
+      sql`(${table.institutionKind} is null and ${table.institutionName} is null) or (${table.institutionKind} in ('itau', 'prex') and ${table.institutionName} is not null) or (${table.institutionKind} = 'other' and ${table.institutionName} is not null and btrim(${table.institutionName}) <> '')`,
+    ),
+  ],
+);

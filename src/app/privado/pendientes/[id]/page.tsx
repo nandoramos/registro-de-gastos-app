@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PendingEntryForm } from "@/components/pending-entry-form";
 import { TransferForm } from "@/components/transfer-form";
+import { ConversionForm } from "@/components/conversion-form";
 import { EntryStatusActions } from "@/components/entry-status-actions";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
@@ -34,7 +35,9 @@ export default async function PendingEntryPage({
       </Link>
       <h1 className="mt-10 text-4xl font-semibold">Completar entrada</h1>
       <div className="mt-8 rounded-2xl border bg-white p-6">
-        {entry.interpretation.entryType === "own-transfer" ? (
+        {entry.interpretation.entryType === "conversion" ? (
+          <ConversionForm entry={entry} accounts={accounts} />
+        ) : entry.interpretation.entryType === "own-transfer" ? (
           <TransferForm entry={entry} accounts={accounts} />
         ) : (
           <PendingEntryForm

@@ -1,6 +1,11 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
+import type { ConversionInput } from "@/modules/conversions/domain";
+import {
+  getConversionDetail,
+  validateConversionReferences,
+} from "@/modules/conversions/service";
 import type { ExpenseInput } from "@/modules/expenses/domain";
 import {
   getExpenseDetail,
@@ -303,6 +308,39 @@ export async function completePendingTransfer<T extends PgQueryResultHKT>(
         ok: true as const,
         reviewedAt: completed.reviewedAt,
         transfer: completed.movement,
+      }
+    : completed;
+}
+
+export async function completePendingConversion<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  id: string,
+  input: ConversionInput,
+  interpretation: Record<string, unknown>,
+) {
+  const completed = await completePendingMovement(
+    db,
+    userId,
+    id,
+    interpretation,
+    () => validateConversionReferences(db, userId, input),
+    async (transaction, conversionId) => {
+      await transaction.insert(schema.currencyConversion).values({
+        id: conversionId,
+        userId,
+        sourceEventId: id,
+        ...input,
+      });
+    },
+    (conversionId) => getConversionDetail(db, userId, conversionId),
+    "Completed conversion is unavailable",
+  );
+  return completed.ok
+    ? {
+        ok: true as const,
+        reviewedAt: completed.reviewedAt,
+        conversion: completed.movement,
       }
     : completed;
 }

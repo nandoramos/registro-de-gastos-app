@@ -5,12 +5,14 @@ import {
 } from "@/modules/expenses/service";
 import { analyzePendingExpense } from "./domain";
 import {
+  completePendingConversion,
   completePendingTransfer,
   completePendingEntry,
   createPendingEntry,
   getPendingEntry,
   updatePendingInterpretation,
 } from "./service";
+import { analyzeConversion } from "@/modules/conversions/domain";
 import { analyzeTransfer } from "@/modules/transfers/domain";
 
 export async function ingestManualCandidate<T extends PgQueryResultHKT>(
@@ -60,6 +62,44 @@ export async function reviewPendingCandidate<T extends PgQueryResultHKT>(
 ) {
   const existing = await getPendingEntry(db, userId, id);
   if (!existing) return { kind: "not-found" as const };
+  if (existing.interpretation.entryType === "conversion") {
+    const analysis = analyzeConversion(correction);
+    if (!analysis.complete) {
+      const entry = await updatePendingInterpretation(
+        db,
+        userId,
+        id,
+        analysis.interpretation,
+        analysis.issues,
+      );
+      return entry
+        ? { kind: "pending" as const, entry }
+        : { kind: "not-found" as const };
+    }
+    const completed = await completePendingConversion(
+      db,
+      userId,
+      id,
+      analysis.conversion,
+      analysis.interpretation,
+    );
+    if (completed.ok) {
+      return { kind: "registered-conversion" as const, ...completed };
+    }
+    if (completed.error === "NOT_FOUND") {
+      return { kind: "not-found" as const };
+    }
+    const entry = await updatePendingInterpretation(
+      db,
+      userId,
+      id,
+      analysis.interpretation,
+      [completed.error],
+    );
+    return entry
+      ? { kind: "pending" as const, entry }
+      : { kind: "not-found" as const };
+  }
   if (existing.interpretation.entryType === "own-transfer") {
     const analysis = analyzeTransfer(correction);
     if (!analysis.complete) {

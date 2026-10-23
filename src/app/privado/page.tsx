@@ -47,6 +47,12 @@ export default async function PrivateHome() {
             Registrar transferencia o retiro
           </Link>
           <Link
+            href="/privado/conversiones/nueva"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+          >
+            Registrar conversión
+          </Link>
+          <Link
             href="/privado/descartadas"
             className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >
