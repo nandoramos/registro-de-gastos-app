@@ -53,6 +53,12 @@ export default async function PrivateHome() {
             Registrar conversión
           </Link>
           <Link
+            href="/privado/probar-interpretacion"
+            className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+          >
+            Probar interpretación
+          </Link>
+          <Link
             href="/privado/descartadas"
             className="inline-flex min-h-12 items-center rounded-xl border border-stone-300 bg-white px-5 text-sm font-semibold text-stone-800 hover:bg-stone-100"
           >
