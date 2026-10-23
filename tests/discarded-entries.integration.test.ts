@@ -3,7 +3,10 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
-import { pendingEntriesCollectionResponse } from "@/modules/pending-entries/http";
+import {
+  pendingEntryResourceResponse,
+  pendingEntriesCollectionResponse,
+} from "@/modules/pending-entries/http";
 import {
   discardedEntriesCollectionResponse,
   discardedEntryRecoverResponse,
@@ -164,5 +167,34 @@ describe("descarte y recuperación de pendientes", () => {
       otherAccess,
     );
     expect(recover.status).toBe(404);
+  });
+
+  it("registra exactamente la interpretación vigente al descartar", async () => {
+    const created = await pendingEntriesCollectionResponse(
+      request("/api/pending-entries", "POST", { title: "Versión inicial" }),
+      db,
+      ownerAccess,
+    );
+    const { id } = await created.json();
+    await pendingEntryResourceResponse(
+      request("/api/pending-entries/" + id, "PATCH", {
+        title: "Versión corregida",
+      }),
+      id,
+      db,
+      ownerAccess,
+    );
+
+    await pendingEntryDiscardResponse(
+      request("/api/pending-entries/" + id + "/discard", "POST"),
+      id,
+      db,
+      ownerAccess,
+    );
+    const reviews = await db.select().from(schema.sourceEventReview);
+    expect(reviews.at(-1)?.interpretation).toEqual({
+      title: "Versión corregida",
+    });
+    expect(reviews.at(-1)?.outcome).toBe("discarded");
   });
 });

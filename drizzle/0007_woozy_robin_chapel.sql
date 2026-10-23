@@ -1,0 +1,2 @@
+ALTER TABLE "pending_entry" ADD CONSTRAINT "pending_entry_status_allowed" CHECK ("pending_entry"."status" in ('pending', 'discarded'));--> statement-breakpoint
+ALTER TABLE "pending_entry" ADD CONSTRAINT "pending_entry_discard_state_valid" CHECK (("pending_entry"."status" = 'discarded' and "pending_entry"."discarded_at" is not null) or ("pending_entry"."status" = 'pending' and "pending_entry"."discarded_at" is null));

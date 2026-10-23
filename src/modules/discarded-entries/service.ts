@@ -78,8 +78,6 @@ export async function discardPendingEntry<T extends PgQueryResultHKT>(
   userId: string,
   id: string,
 ): Promise<DiscardedEntryView | undefined> {
-  const pending = await getPendingEntry(db, userId, id);
-  if (!pending) return undefined;
   const discardedAt = new Date();
   const changed = await db.transaction(async (transaction) => {
     const [updated] = await transaction
@@ -97,14 +95,17 @@ export async function discardPendingEntry<T extends PgQueryResultHKT>(
           eq(schema.pendingEntry.status, "pending"),
         ),
       )
-      .returning({ id: schema.pendingEntry.sourceEventId });
+      .returning({
+        interpretation: schema.pendingEntry.interpretation,
+        issues: schema.pendingEntry.issues,
+      });
     if (!updated) return false;
     await transaction.insert(schema.sourceEventReview).values({
       id: crypto.randomUUID(),
       sourceEventId: id,
       userId,
-      interpretation: pending.interpretation,
-      issues: pending.issues,
+      interpretation: updated.interpretation,
+      issues: updated.issues,
       outcome: "discarded",
       createdAt: discardedAt,
     });
@@ -119,8 +120,6 @@ export async function recoverDiscardedEntry<T extends PgQueryResultHKT>(
   userId: string,
   id: string,
 ): Promise<PendingEntryView | undefined> {
-  const discarded = await getDiscardedEntry(db, userId, id);
-  if (!discarded) return undefined;
   const reviewedAt = new Date();
   const changed = await db.transaction(async (transaction) => {
     const [updated] = await transaction
@@ -138,14 +137,17 @@ export async function recoverDiscardedEntry<T extends PgQueryResultHKT>(
           eq(schema.pendingEntry.status, "discarded"),
         ),
       )
-      .returning({ id: schema.pendingEntry.sourceEventId });
+      .returning({
+        interpretation: schema.pendingEntry.interpretation,
+        issues: schema.pendingEntry.issues,
+      });
     if (!updated) return false;
     await transaction.insert(schema.sourceEventReview).values({
       id: crypto.randomUUID(),
       sourceEventId: id,
       userId,
-      interpretation: discarded.interpretation,
-      issues: discarded.issues,
+      interpretation: updated.interpretation,
+      issues: updated.issues,
       outcome: "recovered",
       createdAt: reviewedAt,
     });

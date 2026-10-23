@@ -200,7 +200,17 @@ export const pendingEntry = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("pending_entry_user_idx").on(table.userId)],
+  (table) => [
+    index("pending_entry_user_idx").on(table.userId),
+    check(
+      "pending_entry_status_allowed",
+      sql`${table.status} in ('pending', 'discarded')`,
+    ),
+    check(
+      "pending_entry_discard_state_valid",
+      sql`(${table.status} = 'discarded' and ${table.discardedAt} is not null) or (${table.status} = 'pending' and ${table.discardedAt} is null)`,
+    ),
+  ],
 );
 
 export const sourceEventReview = pgTable(
