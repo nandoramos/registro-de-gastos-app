@@ -145,6 +145,24 @@ describe("conversiones USD y UYU", () => {
     expect(body.conversion.effectiveRateDisplay).toBe("1 USD = 40,25 UYU");
   });
 
+  it("mantiene pendiente una conversión cuando falta uno de sus lados", async () => {
+    const withoutDestination: Record<string, unknown> = {
+      ...completeConversion,
+    };
+    delete withoutDestination.destinationAmount;
+    const response = await conversionsCollectionResponse(
+      request("/api/conversions", "POST", withoutDestination),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(202);
+    expect((await response.json()).issues).toContain(
+      "INVALID_DESTINATION_AMOUNT",
+    );
+    expect(await db.select().from(schema.currencyConversion)).toHaveLength(0);
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+  });
+
   it("admite institución ausente y exige nombre para Otra", async () => {
     const absent = await conversionsCollectionResponse(
       request("/api/conversions", "POST", {
