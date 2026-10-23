@@ -176,49 +176,50 @@ type CompleteResult =
         | "CURRENCY_MISMATCH";
     };
 
-export async function completePendingEntry<T extends PgQueryResultHKT>(
+async function completePendingMovement<
+  T extends PgQueryResultHKT,
+  Movement,
+  ValidationError extends string,
+>(
   db: ExpensesDatabase<T>,
   userId: string,
-  id: string,
-  input: ExpenseInput,
+  sourceEventId: string,
   interpretation: Record<string, unknown>,
-): Promise<CompleteResult> {
-  if (!(await getPendingEntry(db, userId, id))) {
+  validate: () => Promise<{ ok: true } | { ok: false; error: ValidationError }>,
+  insertMovement: (
+    transaction: ExpensesDatabase<T>,
+    movementId: string,
+  ) => Promise<void>,
+  readMovement: (movementId: string) => Promise<Movement | undefined>,
+  unavailableMessage: string,
+): Promise<
+  | { ok: true; reviewedAt: Date; movement: Movement }
+  | { ok: false; error: "NOT_FOUND" | ValidationError }
+> {
+  if (!(await getPendingEntry(db, userId, sourceEventId))) {
     return { ok: false, error: "NOT_FOUND" };
   }
-  const references = await validateExpenseReferences(db, userId, input);
-  if (!references.ok) return references;
+  const validation = await validate();
+  if (!validation.ok) return validation;
 
-  const expenseId = crypto.randomUUID();
+  const movementId = crypto.randomUUID();
   const reviewedAt = new Date();
   const completed = await db.transaction(async (transaction) => {
     const [claimed] = await transaction
       .delete(schema.pendingEntry)
       .where(
         and(
-          eq(schema.pendingEntry.sourceEventId, id),
+          eq(schema.pendingEntry.sourceEventId, sourceEventId),
           eq(schema.pendingEntry.userId, userId),
           eq(schema.pendingEntry.status, "pending"),
         ),
       )
       .returning({ id: schema.pendingEntry.sourceEventId });
     if (!claimed) return false;
-    await transaction.insert(schema.expense).values({
-      id: expenseId,
-      userId,
-      sourceEventId: id,
-      accountId: input.accountId,
-      categoryId: input.categoryId,
-      operationDate: input.operationDate,
-      operationTime: input.operationTime,
-      title: input.title,
-      note: input.note,
-      amount: input.amount,
-      currency: input.currency,
-    });
+    await insertMovement(transaction, movementId);
     await transaction.insert(schema.sourceEventReview).values({
       id: crypto.randomUUID(),
-      sourceEventId: id,
+      sourceEventId,
       userId,
       interpretation,
       issues: [],
@@ -228,9 +229,49 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
     return true;
   });
   if (!completed) return { ok: false, error: "NOT_FOUND" };
-  const expense = await getExpenseDetail(db, userId, expenseId);
-  if (!expense) throw new Error("Completed expense is unavailable");
-  return { ok: true, reviewedAt, expense };
+  const movement = await readMovement(movementId);
+  if (!movement) throw new Error(unavailableMessage);
+  return { ok: true, reviewedAt, movement };
+}
+
+export async function completePendingEntry<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  id: string,
+  input: ExpenseInput,
+  interpretation: Record<string, unknown>,
+): Promise<CompleteResult> {
+  const completed = await completePendingMovement(
+    db,
+    userId,
+    id,
+    interpretation,
+    () => validateExpenseReferences(db, userId, input),
+    async (transaction, expenseId) => {
+      await transaction.insert(schema.expense).values({
+        id: expenseId,
+        userId,
+        sourceEventId: id,
+        accountId: input.accountId,
+        categoryId: input.categoryId,
+        operationDate: input.operationDate,
+        operationTime: input.operationTime,
+        title: input.title,
+        note: input.note,
+        amount: input.amount,
+        currency: input.currency,
+      });
+    },
+    (expenseId) => getExpenseDetail(db, userId, expenseId),
+    "Completed expense is unavailable",
+  );
+  return completed.ok
+    ? {
+        ok: true,
+        reviewedAt: completed.reviewedAt,
+        expense: completed.movement,
+      }
+    : completed;
 }
 
 export async function completePendingTransfer<T extends PgQueryResultHKT>(
@@ -240,45 +281,28 @@ export async function completePendingTransfer<T extends PgQueryResultHKT>(
   input: TransferInput,
   interpretation: Record<string, unknown>,
 ) {
-  if (!(await getPendingEntry(db, userId, id))) {
-    return { ok: false as const, error: "NOT_FOUND" as const };
-  }
-  const references = await validateTransferReferences(db, userId, input);
-  if (!references.ok) return references;
-
-  const transferId = crypto.randomUUID();
-  const reviewedAt = new Date();
-  const completed = await db.transaction(async (transaction) => {
-    const [claimed] = await transaction
-      .delete(schema.pendingEntry)
-      .where(
-        and(
-          eq(schema.pendingEntry.sourceEventId, id),
-          eq(schema.pendingEntry.userId, userId),
-          eq(schema.pendingEntry.status, "pending"),
-        ),
-      )
-      .returning({ id: schema.pendingEntry.sourceEventId });
-    if (!claimed) return false;
-    await transaction.insert(schema.ownTransfer).values({
-      id: transferId,
-      userId,
-      sourceEventId: id,
-      ...input,
-    });
-    await transaction.insert(schema.sourceEventReview).values({
-      id: crypto.randomUUID(),
-      sourceEventId: id,
-      userId,
-      interpretation,
-      issues: [],
-      outcome: "registered",
-      createdAt: reviewedAt,
-    });
-    return true;
-  });
-  if (!completed) return { ok: false as const, error: "NOT_FOUND" as const };
-  const transfer = await getTransferDetail(db, userId, transferId);
-  if (!transfer) throw new Error("Completed transfer is unavailable");
-  return { ok: true as const, reviewedAt, transfer };
+  const completed = await completePendingMovement(
+    db,
+    userId,
+    id,
+    interpretation,
+    () => validateTransferReferences(db, userId, input),
+    async (transaction, transferId) => {
+      await transaction.insert(schema.ownTransfer).values({
+        id: transferId,
+        userId,
+        sourceEventId: id,
+        ...input,
+      });
+    },
+    (transferId) => getTransferDetail(db, userId, transferId),
+    "Completed transfer is unavailable",
+  );
+  return completed.ok
+    ? {
+        ok: true as const,
+        reviewedAt: completed.reviewedAt,
+        transfer: completed.movement,
+      }
+    : completed;
 }
