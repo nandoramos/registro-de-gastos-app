@@ -10,6 +10,7 @@ export type ExpensesDatabase<T extends PgQueryResultHKT> = PgDatabase<
 
 const detailSelection = {
   id: schema.expense.id,
+  voidedAt: schema.expense.voidedAt,
   operationDate: schema.expense.operationDate,
   operationTime: schema.expense.operationTime,
   title: schema.expense.title,
@@ -73,6 +74,7 @@ export async function getExpenseDetail<T extends PgQueryResultHKT>(
     .orderBy(asc(schema.expenseRevision.changedAt));
   return {
     id: row.id,
+    voidedAt: row.voidedAt,
     operationDate: row.operationDate,
     operationTime: row.operationTime,
     title: row.title,

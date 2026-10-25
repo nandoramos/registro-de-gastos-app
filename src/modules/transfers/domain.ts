@@ -30,6 +30,7 @@ export type TransferDetail = Omit<
   | "currency"
 > & {
   id: string;
+  voidedAt: Date | null;
   source: {
     account: {
       id: string;

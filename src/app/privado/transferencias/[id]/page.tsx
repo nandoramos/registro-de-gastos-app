@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
+import { MovementStatusActions } from "@/components/movement-status-actions";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getTransferDetail } from "@/modules/transfers/service";
@@ -39,6 +40,8 @@ export default async function TransferDetailPage({
         <h1 className="mt-4 text-4xl font-semibold tracking-tight">
           {transfer.title}
         </h1>
+        {transfer.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado.</p>}
+        <div className="mt-6"><MovementStatusActions type="transfer" id={transfer.id} voided={Boolean(transfer.voidedAt)} /></div>
         <p className="mt-3 text-stone-600">
           {transfer.operationDate} · No participa en los totales de gastos.
         </p>

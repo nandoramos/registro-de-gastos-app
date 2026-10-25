@@ -68,6 +68,7 @@ export async function getTransferDetail<T extends PgQueryResultHKT>(
   const [row] = await db
     .select({
       id: schema.ownTransfer.id,
+      voidedAt: schema.ownTransfer.voidedAt,
       kind: schema.ownTransfer.kind,
       operationDate: schema.ownTransfer.operationDate,
       title: schema.ownTransfer.title,
@@ -112,6 +113,7 @@ export async function getTransferDetail<T extends PgQueryResultHKT>(
   if (!sourceAccount || !destinationAccount) return undefined;
   return {
     id: row.id,
+    voidedAt: row.voidedAt,
     kind: row.kind,
     operationDate: row.operationDate,
     title: row.title,

@@ -266,6 +266,7 @@ export const expense = pgTable(
     note: text("note"),
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
     currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -333,6 +334,7 @@ export const ownTransfer = pgTable(
       scale: 2,
     }).notNull(),
     currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -407,6 +409,7 @@ export const currencyConversion = pgTable(
       "itau" | "prex" | "other"
     >(),
     institutionName: text("institution_name"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -451,6 +454,40 @@ export const currencyConversion = pgTable(
     check(
       "currency_conversion_institution_name_valid",
       sql`(${table.institutionKind} is null and ${table.institutionName} is null) or (${table.institutionKind} in ('itau', 'prex') and ${table.institutionName} is not null) or (${table.institutionKind} = 'other' and ${table.institutionName} is not null and btrim(${table.institutionName}) <> '')`,
+    ),
+  ],
+);
+
+export const movementStatusEvent = pgTable(
+  "movement_status_event",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    movementType: text("movement_type")
+      .$type<"expense" | "transfer" | "conversion">()
+      .notNull(),
+    movementId: text("movement_id").notNull(),
+    action: text("action").$type<"voided" | "restored">().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("movement_status_event_user_movement_idx").on(
+      table.userId,
+      table.movementType,
+      table.movementId,
+      table.createdAt,
+    ),
+    check(
+      "movement_status_event_type_allowed",
+      sql`${table.movementType} in ('expense', 'transfer', 'conversion')`,
+    ),
+    check(
+      "movement_status_event_action_allowed",
+      sql`${table.action} in ('voided', 'restored')`,
     ),
   ],
 );

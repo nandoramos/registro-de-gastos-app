@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
+import { MovementStatusActions } from "@/components/movement-status-actions";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getConversionDetail } from "@/modules/conversions/service";
@@ -39,6 +40,8 @@ export default async function ConversionDetailPage({
         <h1 className="mt-4 text-4xl font-semibold tracking-tight">
           {conversion.title}
         </h1>
+        {conversion.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado.</p>}
+        <div className="mt-6"><MovementStatusActions type="conversion" id={conversion.id} voided={Boolean(conversion.voidedAt)} /></div>
         <p className="mt-3 text-stone-600">
           {conversion.operationDate} · No participa en los totales de gastos.
         </p>

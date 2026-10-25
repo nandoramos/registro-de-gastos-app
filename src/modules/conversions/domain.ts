@@ -33,6 +33,7 @@ export type ConversionDetail = Omit<
   | "institutionName"
 > & {
   id: string;
+  voidedAt: Date | null;
   source: {
     account: { id: string; name: string; currency: AccountCurrency };
     amount: string;

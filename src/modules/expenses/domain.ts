@@ -23,6 +23,7 @@ export type ExpenseRevision = {
 
 export type ExpenseDetail = Omit<ExpenseInput, "accountId" | "categoryId"> & {
   id: string;
+  voidedAt: Date | null;
   account: { id: string; name: string; currency: AccountCurrency };
   category: { id: string; name: string };
   source: {

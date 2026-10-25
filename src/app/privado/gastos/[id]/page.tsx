@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
 import { ExpenseEditForm } from "@/components/expense-edit-form";
 import { ExpenseRevisionList } from "@/components/expense-revision-list";
+import { MovementStatusActions } from "@/components/movement-status-actions";
 import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
@@ -53,6 +54,8 @@ export default async function ExpenseDetailPage({
         <h1 className="mt-4 text-4xl font-semibold tracking-tight">
           {expense.title}
         </h1>
+        {expense.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado y no participa en totales.</p>}
+        <div className="mt-6"><MovementStatusActions type="expense" id={expense.id} voided={Boolean(expense.voidedAt)} /></div>
         <p className="mt-4 text-2xl font-semibold">
           {expense.currency} {expense.amount}
         </p>

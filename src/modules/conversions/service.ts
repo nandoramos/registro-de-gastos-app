@@ -51,6 +51,7 @@ export async function getConversionDetail<T extends PgQueryResultHKT>(
   const [row] = await db
     .select({
       id: schema.currencyConversion.id,
+      voidedAt: schema.currencyConversion.voidedAt,
       operationDate: schema.currencyConversion.operationDate,
       title: schema.currencyConversion.title,
       note: schema.currencyConversion.note,
@@ -97,6 +98,7 @@ export async function getConversionDetail<T extends PgQueryResultHKT>(
   if (!sourceAccount || !destinationAccount) return undefined;
   return {
     id: row.id,
+    voidedAt: row.voidedAt,
     operationDate: row.operationDate,
     title: row.title,
     note: row.note,
