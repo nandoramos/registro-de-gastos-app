@@ -9,6 +9,7 @@ export type AccountView = {
   name: string;
   kind: AccountKind;
   currency: AccountCurrency;
+  archivedAt?: Date | null;
 };
 
 type ValidationResult<T> =

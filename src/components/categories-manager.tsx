@@ -72,6 +72,10 @@ export function CategoriesManager({
       setPending(false);
     }
   }
+  async function archive(category: CategoryView) {
+    setPending(true); setError(undefined);
+    try { const response = await fetch(`/api/categories/${category.id}/archive`, { method: "POST" }); if (!response.ok) throw new Error(); setCategories((current) => current.filter((item) => item.id !== category.id)); } catch { setError(message()); } finally { setPending(false); }
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -138,6 +142,7 @@ export function CategoriesManager({
                   >
                     Renombrar
                   </Button>
+                  <Button variant="outline" disabled={pending} onClick={() => archive(category)}>Archivar</Button>
                 </div>
               )}
             </li>

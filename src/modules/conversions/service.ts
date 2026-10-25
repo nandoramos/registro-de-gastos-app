@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
@@ -24,7 +24,12 @@ export async function validateConversionReferences<T extends PgQueryResultHKT>(
       currency: schema.financialAccount.currency,
     })
     .from(schema.financialAccount)
-    .where(eq(schema.financialAccount.userId, userId));
+    .where(
+      and(
+        eq(schema.financialAccount.userId, userId),
+        isNull(schema.financialAccount.archivedAt),
+      ),
+    );
   const source = accounts.find(
     (account) => account.id === input.sourceAccountId,
   );

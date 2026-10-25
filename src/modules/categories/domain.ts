@@ -27,6 +27,7 @@ export type CategoryView = {
   id: string;
   name: string;
   systemKey: InitialCategoryKey | null;
+  archivedAt?: Date | null;
 };
 
 export function validateCategoryName(

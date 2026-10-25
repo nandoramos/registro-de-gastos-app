@@ -3,6 +3,7 @@ import type { GetAccess } from "@/modules/auth/http";
 import { validateAccountCreation, validateAccountRename } from "./domain";
 import {
   createAccount,
+  archiveAccount,
   listAccounts,
   renameAccount,
   type AccountsDatabase,
@@ -74,6 +75,10 @@ export async function accountResourceResponse<T extends PgQueryResultHKT>(
   try {
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/archive")) {
+      const account = await archiveAccount(db, access.userId, accountId);
+      return account ? Response.json(account, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
     if (request.method !== "PATCH") {
       return Response.json(
         { error: "METHOD_NOT_ALLOWED" },

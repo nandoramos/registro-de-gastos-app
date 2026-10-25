@@ -110,6 +110,7 @@ export const financialAccount = pgTable(
     name: text("name").notNull(),
     kind: text("kind").$type<"bank" | "cash">().notNull(),
     currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -140,6 +141,7 @@ export const expenseCategory = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     systemKey: text("system_key").$type<InitialCategoryKey>(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

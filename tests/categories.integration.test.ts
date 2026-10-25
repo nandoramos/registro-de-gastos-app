@@ -95,6 +95,7 @@ describe("categorías de gastos", () => {
       id: expect.any(String),
       name: "Mascotas",
       systemKey: null,
+      archivedAt: null,
     });
   });
 
@@ -124,6 +125,7 @@ describe("categorías de gastos", () => {
       id: house!.id,
       name: "Obra de casa",
       systemKey: "house_construction",
+      archivedAt: null,
     });
   });
 
@@ -143,6 +145,16 @@ describe("categorías de gastos", () => {
     expect(
       categories.filter((category) => category.systemKey === "other"),
     ).toHaveLength(1);
+  });
+
+  it("archiva una categoría propia y no la ofrece en la lista activa", async () => {
+    const created = await categoriesCollectionResponse(request("/api/categories", "POST", { name: "Temporal" }), db, ownerAccess);
+    const category = await created.json();
+    const archived = await categoryResourceResponse(request(`/api/categories/${category.id}/archive`, "POST"), category.id, db, ownerAccess);
+    expect(archived.status).toBe(200);
+    expect((await archived.json()).archivedAt).toEqual(expect.any(String));
+    const active = await categoriesCollectionResponse(request("/api/categories"), db, ownerAccess);
+    expect((await active.json()).categories.map((item: { id: string }) => item.id)).not.toContain(category.id);
   });
 
   it.each(["", " ", "x".repeat(81)])(

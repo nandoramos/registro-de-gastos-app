@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpenseDetail, ExpenseInput } from "./domain";
@@ -124,6 +124,7 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
       and(
         eq(schema.financialAccount.id, input.accountId),
         eq(schema.financialAccount.userId, userId),
+        isNull(schema.financialAccount.archivedAt),
       ),
     );
   if (!account) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
@@ -137,6 +138,7 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
       and(
         eq(schema.expenseCategory.id, input.categoryId),
         eq(schema.expenseCategory.userId, userId),
+        isNull(schema.expenseCategory.archivedAt),
       ),
     );
   return category ? { ok: true } : { ok: false, error: "CATEGORY_NOT_FOUND" };

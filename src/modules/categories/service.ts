@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import { initialCategories, type CategoryView } from "./domain";
@@ -12,6 +12,7 @@ const categorySelection = {
   id: schema.expenseCategory.id,
   name: schema.expenseCategory.name,
   systemKey: schema.expenseCategory.systemKey,
+  archivedAt: schema.expenseCategory.archivedAt,
 };
 
 export async function ensureInitialCategories<T extends PgQueryResultHKT>(
@@ -33,14 +34,18 @@ export async function ensureInitialCategories<T extends PgQueryResultHKT>(
 
 export async function listCategories<T extends PgQueryResultHKT>(
   db: CategoriesDatabase<T>,
-  userId: string,
+  userId: string, includeArchived = false,
 ): Promise<CategoryView[]> {
   await ensureInitialCategories(db, userId);
   return db
     .select(categorySelection)
     .from(schema.expenseCategory)
-    .where(eq(schema.expenseCategory.userId, userId))
+    .where(and(eq(schema.expenseCategory.userId, userId), ...(includeArchived ? [] : [isNull(schema.expenseCategory.archivedAt)])))
     .orderBy(asc(schema.expenseCategory.name));
+}
+
+export async function archiveCategory<T extends PgQueryResultHKT>(db: CategoriesDatabase<T>, userId: string, categoryId: string) {
+  const [category] = await db.update(schema.expenseCategory).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.expenseCategory.id, categoryId), eq(schema.expenseCategory.userId, userId), isNull(schema.expenseCategory.archivedAt))).returning(categorySelection); return category;
 }
 
 export async function createCategory<T extends PgQueryResultHKT>(

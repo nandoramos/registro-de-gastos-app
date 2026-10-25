@@ -131,7 +131,17 @@ describe("cuentas propias", () => {
       name: "Itaú pesos",
       kind: "bank",
       currency: "UYU",
+      archivedAt: null,
     });
+  });
+
+  it("archiva una cuenta propia y la excluye de nuevas listas", async () => {
+    const created = await accountsCollectionResponse(request("/api/accounts", "POST", { name: "Cuenta vieja", kind: "bank", currency: "UYU" }), db, ownerAccess);
+    const account = await created.json();
+    const archived = await accountResourceResponse(request(`/api/accounts/${account.id}/archive`, "POST"), account.id, db, ownerAccess);
+    expect(archived.status).toBe(200);
+    expect((await archived.json()).archivedAt).toEqual(expect.any(String));
+    expect(await accountsCollectionResponse(request("/api/accounts"), db, ownerAccess).then((response) => response.json())).toEqual({ accounts: [] });
   });
 
   it("no lista ni modifica cuentas de otro usuario aunque envíe su user_id", async () => {

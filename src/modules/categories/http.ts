@@ -3,6 +3,7 @@ import type { GetAccess } from "@/modules/auth/http";
 import { validateCategoryName } from "./domain";
 import {
   createCategory,
+  archiveCategory,
   listCategories,
   renameCategory,
   type CategoriesDatabase,
@@ -73,6 +74,10 @@ export async function categoryResourceResponse<T extends PgQueryResultHKT>(
   try {
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/archive")) {
+      const category = await archiveCategory(db, access.userId, categoryId);
+      return category ? Response.json(category, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
     if (request.method !== "PATCH") {
       return Response.json(
         { error: "METHOD_NOT_ALLOWED" },
