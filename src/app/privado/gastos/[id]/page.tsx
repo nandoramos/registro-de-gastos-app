@@ -25,8 +25,8 @@ export default async function ExpenseDetailPage({
   try {
     [expense, accounts, categories] = await Promise.all([
       getExpenseDetail(getAuthRuntime().db, access.userId, (await params).id),
-      listAccounts(getAuthRuntime().db, access.userId),
-      listCategories(getAuthRuntime().db, access.userId),
+      listAccounts(getAuthRuntime().db, access.userId, true),
+      listCategories(getAuthRuntime().db, access.userId, true),
     ]);
   } catch {
     redirect("/login?error=unavailable");

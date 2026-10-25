@@ -143,7 +143,7 @@ export function ExpenseFields({
           className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none"
         >
           {accounts.map((account) => (
-            <option key={account.id} value={account.id}>
+            <option key={account.id} value={account.id} disabled={Boolean(account.archivedAt) && account.id !== fields.accountId.value}>
               {account.name} · {account.currency}
             </option>
           ))}
@@ -158,7 +158,7 @@ export function ExpenseFields({
           className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none"
         >
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>
+            <option key={category.id} value={category.id} disabled={Boolean(category.archivedAt) && category.id !== fields.categoryId.value}>
               {category.name}
             </option>
           ))}

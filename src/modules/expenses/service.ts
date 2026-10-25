@@ -107,6 +107,7 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
   userId: string,
   input: ExpenseInput,
+  retainedArchived?: { accountId: string; categoryId: string },
 ): Promise<
   | { ok: true }
   | {
@@ -118,30 +119,29 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
     .select({
       id: schema.financialAccount.id,
       currency: schema.financialAccount.currency,
+      archivedAt: schema.financialAccount.archivedAt,
     })
     .from(schema.financialAccount)
     .where(
       and(
         eq(schema.financialAccount.id, input.accountId),
         eq(schema.financialAccount.userId, userId),
-        isNull(schema.financialAccount.archivedAt),
       ),
     );
-  if (!account) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
+  if (!account || (account.archivedAt && input.accountId !== retainedArchived?.accountId)) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
   if (account.currency !== input.currency) {
     return { ok: false, error: "CURRENCY_MISMATCH" };
   }
   const [category] = await db
-    .select({ id: schema.expenseCategory.id })
+    .select({ id: schema.expenseCategory.id, archivedAt: schema.expenseCategory.archivedAt })
     .from(schema.expenseCategory)
     .where(
       and(
         eq(schema.expenseCategory.id, input.categoryId),
         eq(schema.expenseCategory.userId, userId),
-        isNull(schema.expenseCategory.archivedAt),
       ),
     );
-  return category ? { ok: true } : { ok: false, error: "CATEGORY_NOT_FOUND" };
+  return category && (!category.archivedAt || input.categoryId === retainedArchived?.categoryId) ? { ok: true } : { ok: false, error: "CATEGORY_NOT_FOUND" };
 }
 
 export async function registerManualExpense<T extends PgQueryResultHKT>(
@@ -243,7 +243,8 @@ export async function updateExpense<T extends PgQueryResultHKT>(
     );
   if (!ownedExpense) return { ok: false, error: "NOT_FOUND" };
 
-  const references = await validateExpenseReferences(db, userId, input);
+  const [currentReferences] = await db.select({ accountId: schema.expense.accountId, categoryId: schema.expense.categoryId }).from(schema.expense).where(and(eq(schema.expense.id, expenseId), eq(schema.expense.userId, userId)));
+  const references = await validateExpenseReferences(db, userId, input, currentReferences);
   if (!references.ok) return references;
   const currentInput = storedExpenseInput(input);
 
