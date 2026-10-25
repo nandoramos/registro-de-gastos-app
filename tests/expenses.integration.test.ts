@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
+import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
 import { accountResourceResponse } from "@/modules/accounts/http";
@@ -452,6 +453,36 @@ describe("registro manual de gastos", () => {
       ownerAccess,
     );
     expect((await detail.json()).currency).toBe("UYU");
+  });
+
+  it("rechaza referencias archivadas aunque el cliente intente enviarlas", async () => {
+    await db
+      .update(schema.financialAccount)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.financialAccount.id, "owner-account"));
+    const account = await expensesCollectionResponse(
+      request("/api/expenses", "POST", completeExpense),
+      db,
+      ownerAccess,
+    );
+    expect(account.status).toBe(422);
+    expect(await account.json()).toEqual({ error: "ACCOUNT_NOT_FOUND" });
+
+    await db
+      .update(schema.financialAccount)
+      .set({ archivedAt: null })
+      .where(eq(schema.financialAccount.id, "owner-account"));
+    await db
+      .update(schema.expenseCategory)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.expenseCategory.id, "owner-category"));
+    const category = await expensesCollectionResponse(
+      request("/api/expenses", "POST", completeExpense),
+      db,
+      ownerAccess,
+    );
+    expect(category.status).toBe(422);
+    expect(await category.json()).toEqual({ error: "CATEGORY_NOT_FOUND" });
   });
 
   it("rechaza acceso anónimo antes de consultar o escribir", async () => {
