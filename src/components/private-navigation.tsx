@@ -9,7 +9,7 @@ const primary = [
   { label: "Inicio", href: "/privado" },
   { label: "Movimientos", href: "/privado/historial" },
   { label: "Registrar gasto", href: "/privado/gastos/nuevo" },
-  { label: "Registrar ingreso" },
+  { label: "Registrar ingreso", href: "/privado/ingresos/nuevo" },
   { label: "Registrar transferencia / retiro", href: "/privado/transferencias/nueva" },
   { label: "Ajuste manual" },
   { label: "Cuentas", href: "/privado/cuentas" },

@@ -288,6 +288,42 @@ export const expense = pgTable(
   ],
 );
 
+export const income = pgTable(
+  "income",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id")
+      .notNull()
+      .references(() => sourceEvent.id),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => financialAccount.id),
+    operationDate: date("operation_date", { mode: "string" }).notNull(),
+    operationTime: time("operation_time"),
+    title: text("title").notNull(),
+    note: text("note"),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("income_user_date_idx").on(table.userId, table.operationDate),
+    uniqueIndex("income_source_event_unique").on(table.sourceEventId),
+    check("income_title_not_blank", sql`btrim(${table.title}) <> ''`),
+    check("income_amount_positive", sql`${table.amount} > 0`),
+    check("income_currency_allowed", sql`${table.currency} in ('UYU', 'USD')`),
+  ],
+);
+
 export const expenseRevision = pgTable(
   "expense_revision",
   {
@@ -471,7 +507,7 @@ export const movementStatusEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     movementType: text("movement_type")
-      .$type<"expense" | "transfer" | "conversion">()
+      .$type<"expense" | "income" | "transfer" | "conversion">()
       .notNull(),
     movementId: text("movement_id").notNull(),
     action: text("action").$type<"voided" | "restored">().notNull(),
@@ -488,7 +524,7 @@ export const movementStatusEvent = pgTable(
     ),
     check(
       "movement_status_event_type_allowed",
-      sql`${table.movementType} in ('expense', 'transfer', 'conversion')`,
+      sql`${table.movementType} in ('expense', 'income', 'transfer', 'conversion')`,
     ),
     check(
       "movement_status_event_action_allowed",

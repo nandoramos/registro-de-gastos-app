@@ -27,7 +27,7 @@ it("mantiene accesibles las pantallas existentes y distingue opciones futuras", 
   const menu = screen.getByRole("navigation", { name: "Navegación principal" });
   expect(within(menu).getByRole("link", { name: "Movimientos" }).getAttribute("href")).toBe("/privado/historial");
   expect(within(menu).getByRole("link", { name: "Registrar gasto" }).getAttribute("href")).toBe("/privado/gastos/nuevo");
-  expect(within(menu).getByText("Registrar ingreso").closest("a")).toBeNull();
+  expect(within(menu).getByRole("link", { name: "Registrar ingreso" }).getAttribute("href")).toBe("/privado/ingresos/nuevo");
   expect(within(menu).getByRole("link", { name: "Ingresar texto de email" })).toBeTruthy();
 });
 
