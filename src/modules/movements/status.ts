@@ -82,13 +82,13 @@ export async function listVoidedMovements<T extends PgQueryResultHKT>(
   const [expenses, incomes, transfers, conversions] = await Promise.all([
     db.select({ id: schema.expense.id, title: schema.expense.title, operationDate: schema.expense.operationDate }).from(schema.expense).where(and(eq(schema.expense.userId, userId), isNotNull(schema.expense.voidedAt))),
     db.select({ id: schema.income.id, title: schema.income.title, operationDate: schema.income.operationDate }).from(schema.income).where(and(eq(schema.income.userId, userId), isNotNull(schema.income.voidedAt))),
-    db.select({ id: schema.ownTransfer.id, title: schema.ownTransfer.title, operationDate: schema.ownTransfer.operationDate }).from(schema.ownTransfer).where(and(eq(schema.ownTransfer.userId, userId), isNotNull(schema.ownTransfer.voidedAt))),
+    db.select({ id: schema.ownTransfer.id, title: schema.ownTransfer.title, operationDate: schema.ownTransfer.operationDate, kind: schema.ownTransfer.kind }).from(schema.ownTransfer).where(and(eq(schema.ownTransfer.userId, userId), isNotNull(schema.ownTransfer.voidedAt))),
     db.select({ id: schema.currencyConversion.id, title: schema.currencyConversion.title, operationDate: schema.currencyConversion.operationDate }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.userId, userId), isNotNull(schema.currencyConversion.voidedAt))),
   ]);
   return [
     ...expenses.map((movement) => ({ ...movement, type: "expense" as const })),
     ...incomes.map((movement) => ({ ...movement, type: "income" as const })),
-    ...transfers.map((movement) => ({ ...movement, type: "transfer" as const })),
+    ...transfers.map(({ kind, ...movement }) => ({ ...movement, type: kind })),
     ...conversions.map((movement) => ({ ...movement, type: "conversion" as const })),
   ].sort((left, right) => right.operationDate.localeCompare(left.operationDate));
 }

@@ -181,6 +181,7 @@ const issueLabels: Record<string, string> = {
     "Un retiro debe salir de una cuenta bancaria y llegar a efectivo.",
   TRANSFER_KIND_MISMATCH:
     "Un movimiento de banco a efectivo debe registrarse como retiro.",
+  MOVEMENT_VOIDED: "No se puede editar una operación anulada.",
 };
 
 export function transferIssueLabel(issue: string): string {

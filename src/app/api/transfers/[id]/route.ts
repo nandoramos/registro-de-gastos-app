@@ -14,3 +14,15 @@ export async function GET(
     getAccess,
   );
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return transferResourceResponse(
+    request,
+    (await params).id,
+    getAuthRuntime().db,
+    getAccess,
+  );
+}

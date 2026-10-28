@@ -5,6 +5,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TransferForm } from "@/components/transfer-form";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -25,14 +27,20 @@ const accounts = [
   },
   {
     id: "cash",
-    name: "Efectivo",
+    name: "Billetera",
+    kind: "cash" as const,
+    currency: "UYU" as const,
+  },
+  {
+    id: "cash-other",
+    name: "Cajoncete",
     kind: "cash" as const,
     currency: "UYU" as const,
   },
 ];
 
 describe("formulario de transferencias propias", () => {
-  it("registra los dos lados y enlaza el detalle", async () => {
+  it("usa fecha actual, genera el detalle y completa ambos importes al ingresar una vez", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -45,14 +53,14 @@ describe("formulario de transferencias propias", () => {
     const user = userEvent.setup();
     render(<TransferForm accounts={accounts} />);
 
-    await user.type(screen.getByLabelText("Fecha"), "2026-10-23");
-    await user.type(screen.getByLabelText("Título"), "Traslado");
+    const operationDate = (screen.getByLabelText("Fecha") as HTMLInputElement).value;
+    expect(operationDate).not.toBe("");
     await user.selectOptions(
       screen.getByLabelText("Cuenta de destino"),
       "bank-b",
     );
-    await user.type(screen.getByLabelText("Importe debitado"), "100,25");
-    await user.type(screen.getByLabelText("Importe acreditado"), "100,25");
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Transferencia: Banco A → Banco B");
+    await user.type(screen.getByLabelText("Importe"), "100,25");
     await user.click(
       screen.getByRole("button", { name: "Registrar transferencia" }),
     );
@@ -68,8 +76,8 @@ describe("formulario de transferencias propias", () => {
         method: "POST",
         body: JSON.stringify({
           kind: "transfer",
-          operationDate: "2026-10-23",
-          title: "Traslado",
+          operationDate,
+          title: "Transferencia: Banco A → Banco B",
           note: "",
           sourceAccountId: "bank-a",
           destinationAccountId: "bank-b",
@@ -79,6 +87,16 @@ describe("formulario de transferencias propias", () => {
         }),
       }),
     );
+  });
+
+  it("sugiere Billetera como destino al elegir retiro y permite elegir otra cuenta de efectivo", async () => {
+    const user = userEvent.setup();
+    render(<TransferForm accounts={accounts} />);
+    await user.selectOptions(screen.getByLabelText("Tipo de operación"), "withdrawal");
+    expect((screen.getByLabelText("Cuenta de destino") as HTMLSelectElement).value).toBe("cash");
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Retiro: Banco A → Billetera");
+    await user.selectOptions(screen.getByLabelText("Cuenta de destino"), "cash-other");
+    expect((screen.getByLabelText("Cuenta de destino") as HTMLSelectElement).value).toBe("cash-other");
   });
 
   it("enlaza una carga incompleta con su revisión pendiente", async () => {
@@ -95,13 +113,12 @@ describe("formulario de transferencias propias", () => {
     );
     const user = userEvent.setup();
     render(<TransferForm accounts={accounts} />);
-    await user.type(screen.getByLabelText("Fecha"), "2026-10-23");
-    await user.type(screen.getByLabelText("Título"), "Traslado incompleto");
+    await user.clear(screen.getByLabelText("Título"));
     await user.selectOptions(
       screen.getByLabelText("Cuenta de destino"),
       "bank-b",
     );
-    await user.type(screen.getByLabelText("Importe debitado"), "100");
+    await user.type(screen.getByLabelText("Importe"), "100");
     await user.click(
       screen.getByRole("button", { name: "Registrar transferencia" }),
     );

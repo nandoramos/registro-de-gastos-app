@@ -2,7 +2,8 @@ import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { GetAccess } from "@/modules/auth/http";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
 import { recordFromUnknown } from "@/modules/pending-entries/domain";
-import { getTransferDetail } from "./service";
+import { analyzeTransfer, transferIssueLabel } from "./domain";
+import { getTransferDetail, updateManualTransfer } from "./service";
 import { ingestManualTransfer } from "./workflow";
 
 const headers = { "Cache-Control": "no-store" };
@@ -64,6 +65,25 @@ export async function transferResourceResponse<T extends PgQueryResultHKT>(
   try {
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
+    if (request.method === "PATCH") {
+      const original = await readJsonRecord(request);
+      if (!original) {
+        return Response.json({ error: "INVALID_JSON_OBJECT" }, { status: 422, headers });
+      }
+      const analysis = analyzeTransfer(original);
+      if (!analysis.complete) {
+        return Response.json(
+          { error: transferIssueLabel(analysis.issues[0]!) },
+          { status: 422, headers },
+        );
+      }
+      const result = await updateManualTransfer(db, access.userId, transferId, analysis.transfer);
+      if (result.ok) return Response.json(result.transfer, { headers });
+      if (result.error === "NOT_FOUND") {
+        return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+      }
+      return Response.json({ error: transferIssueLabel(result.error) }, { status: 422, headers });
+    }
     if (request.method !== "GET") {
       return Response.json(
         { error: "METHOD_NOT_ALLOWED" },

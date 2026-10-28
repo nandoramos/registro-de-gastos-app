@@ -1,4 +1,4 @@
-import { and, eq, isNull, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, lte, or } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
@@ -16,6 +16,7 @@ export async function validateTransferReferences<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
   userId: string,
   input: TransferInput,
+  retainedAccountIds: string[] = [],
 ): Promise<{ ok: true } | { ok: false; error: ReferenceError }> {
   const accounts = await db
     .select({
@@ -27,7 +28,12 @@ export async function validateTransferReferences<T extends PgQueryResultHKT>(
     .where(
       and(
         eq(schema.financialAccount.userId, userId),
-        isNull(schema.financialAccount.archivedAt),
+        retainedAccountIds.length
+          ? or(
+              isNull(schema.financialAccount.archivedAt),
+              ...retainedAccountIds.map((id) => eq(schema.financialAccount.id, id)),
+            )
+          : isNull(schema.financialAccount.archivedAt),
         isNotNull(schema.financialAccount.openingBalance),
         lte(schema.financialAccount.openingDate, input.operationDate),
       ),
@@ -65,6 +71,52 @@ export async function validateTransferReferences<T extends PgQueryResultHKT>(
     return { ok: false, error: "TRANSFER_KIND_MISMATCH" };
   }
   return { ok: true };
+}
+
+export async function updateManualTransfer<T extends PgQueryResultHKT>(
+  db: ExpensesDatabase<T>,
+  userId: string,
+  transferId: string,
+  input: TransferInput,
+): Promise<
+  | { ok: true; transfer: TransferDetail }
+  | { ok: false; error: ReferenceError | "NOT_FOUND" | "MOVEMENT_VOIDED" }
+> {
+  const [current] = await db
+    .select({
+      id: schema.ownTransfer.id,
+      voidedAt: schema.ownTransfer.voidedAt,
+      sourceAccountId: schema.ownTransfer.sourceAccountId,
+      destinationAccountId: schema.ownTransfer.destinationAccountId,
+    })
+    .from(schema.ownTransfer)
+    .where(and(eq(schema.ownTransfer.id, transferId), eq(schema.ownTransfer.userId, userId)));
+  if (!current) return { ok: false, error: "NOT_FOUND" };
+  if (current.voidedAt) return { ok: false, error: "MOVEMENT_VOIDED" };
+  const references = await validateTransferReferences(db, userId, input, [
+    current.sourceAccountId,
+    current.destinationAccountId,
+  ]);
+  if (!references.ok) return references;
+  const [updated] = await db
+    .update(schema.ownTransfer)
+    .set(input)
+    .where(
+      and(
+        eq(schema.ownTransfer.id, transferId),
+        eq(schema.ownTransfer.userId, userId),
+        isNull(schema.ownTransfer.voidedAt),
+      ),
+    )
+    .returning({ id: schema.ownTransfer.id });
+  if (!updated) {
+    const latest = await getTransferDetail(db, userId, transferId);
+    return latest?.voidedAt
+      ? { ok: false, error: "MOVEMENT_VOIDED" }
+      : { ok: false, error: "NOT_FOUND" };
+  }
+  const transfer = await getTransferDetail(db, userId, transferId);
+  return transfer ? { ok: true, transfer } : { ok: false, error: "NOT_FOUND" };
 }
 
 export async function getTransferDetail<T extends PgQueryResultHKT>(

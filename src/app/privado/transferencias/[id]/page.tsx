@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
 import { MovementStatusActions } from "@/components/movement-status-actions";
+import { TransferForm } from "@/components/transfer-form";
+import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getTransferDetail } from "@/modules/transfers/service";
@@ -15,12 +17,15 @@ export default async function TransferDetailPage({
 }) {
   const access = await requireAuthorizedPage();
   let transfer;
+  let accounts;
   try {
+    const db = getAuthRuntime().db;
     transfer = await getTransferDetail(
-      getAuthRuntime().db,
+      db,
       access.userId,
       (await params).id,
     );
+    accounts = await listAccounts(db, access.userId, true);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -42,6 +47,7 @@ export default async function TransferDetailPage({
         </h1>
         {transfer.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado.</p>}
         <div className="mt-6"><MovementStatusActions type="transfer" id={transfer.id} voided={Boolean(transfer.voidedAt)} /></div>
+        {!transfer.voidedAt && <section className="mt-8"><h2 className="mb-4 text-2xl font-semibold">Editar operación</h2><TransferForm accounts={accounts.filter((account) => account.openingBalance != null && (!account.archivedAt || account.id === transfer.source.account.id || account.id === transfer.destination.account.id))} transfer={transfer} /></section>}
         <p className="mt-3 text-stone-600">
           {transfer.operationDate} · No participa en los totales de gastos.
         </p>

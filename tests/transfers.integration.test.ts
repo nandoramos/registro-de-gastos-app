@@ -3,6 +3,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
+import { listAccounts } from "@/modules/accounts/service";
+import { changeMovementStatus } from "@/modules/movements/status";
+import { listMovementHistory } from "@/modules/movements/history";
 import { pendingEntryResourceResponse } from "@/modules/pending-entries/http";
 import {
   transferResourceResponse,
@@ -96,6 +99,53 @@ beforeEach(async () => { await db.update(schema.financialAccount).set({ openingB
 afterAll(async () => database.close());
 
 describe("transferencias propias y retiros", () => {
+  it("edita, anula y restaura una transferencia actualizando ambos saldos", async () => {
+    const balance = async (id: string) =>
+      (await listAccounts(db, "transfer-owner")).find((account) => account.id === id)?.balance;
+    const created = await transfersCollectionResponse(
+      request("/api/transfers", "POST", completeTransfer),
+      db,
+      ownerAccess,
+    );
+    expect(created.status).toBe(201);
+    const original = await created.json();
+    expect(await balance("owner-bank-a")).toBe("-1500.25");
+    expect(await balance("owner-bank-b")).toBe("1500.25");
+
+    const edited = await transferResourceResponse(
+      request("/api/transfers/" + original.id, "PATCH", {
+        ...completeTransfer,
+        title: "Transferencia corregida",
+        sourceAccountId: "owner-bank-b",
+        destinationAccountId: "owner-bank-a",
+        sourceAmount: "2200.00",
+        destinationAmount: "2200.00",
+      }),
+      original.id,
+      db,
+      ownerAccess,
+    );
+    expect(edited.status).toBe(200);
+    expect((await edited.json()).title).toBe("Transferencia corregida");
+    expect(await balance("owner-bank-a")).toBe("2200.00");
+    expect(await balance("owner-bank-b")).toBe("-2200.00");
+    expect((await db.select().from(schema.sourceEvent))[0].originalPayload).toEqual(completeTransfer);
+
+    await changeMovementStatus(db, "transfer-owner", "transfer", original.id, "void");
+    expect(await balance("owner-bank-a")).toBe("0.00");
+    expect(await balance("owner-bank-b")).toBe("0.00");
+    const editVoided = await transferResourceResponse(
+      request("/api/transfers/" + original.id, "PATCH", completeTransfer),
+      original.id,
+      db,
+      ownerAccess,
+    );
+    expect(editVoided.status).toBe(422);
+    await changeMovementStatus(db, "transfer-owner", "transfer", original.id, "restore");
+    expect(await balance("owner-bank-a")).toBe("2200.00");
+    expect(await balance("owner-bank-b")).toBe("-2200.00");
+  });
+
   it("registra ambos lados como una operación con evidencia y sin gasto", async () => {
     const response = await transfersCollectionResponse(
       request("/api/transfers", "POST", completeTransfer),
@@ -173,6 +223,14 @@ describe("transferencias propias y retiros", () => {
     expect(response.status).toBe(201);
     expect((await response.json()).kind).toBe("withdrawal");
     expect(await db.select().from(schema.expense)).toHaveLength(0);
+    const transfer = await transfersCollectionResponse(
+      request("/api/transfers", "POST", completeTransfer), db, ownerAccess,
+    );
+    const withdrawalRows = await listMovementHistory(db, "transfer-owner", { month: "2026-10", type: "withdrawal" });
+    const transferRows = await listMovementHistory(db, "transfer-owner", { month: "2026-10", type: "transfer" });
+    expect(withdrawalRows.map((row) => row.type)).toEqual(["withdrawal"]);
+    expect(transfer.status).toBe(201);
+    expect(transferRows.map((row) => row.type)).toEqual(["transfer"]);
   });
 
   it("mantiene pendiente una diferencia de importes en la misma moneda", async () => {
@@ -255,5 +313,12 @@ describe("transferencias propias y retiros", () => {
       otherAccess,
     );
     expect(hidden.status).toBe(404);
+    const hiddenUpdate = await transferResourceResponse(
+      request(`/api/transfers/${id}`, "PATCH", completeTransfer),
+      id,
+      db,
+      otherAccess,
+    );
+    expect(hiddenUpdate.status).toBe(404);
   });
 });
