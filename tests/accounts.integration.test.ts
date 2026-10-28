@@ -53,8 +53,8 @@ afterAll(async () => {
 describe("cuentas propias", () => {
   it("crea y lista cuentas bancarias y de efectivo en UYU o USD", async () => {
     for (const input of [
-      { name: "Itaú pesos", kind: "bank", currency: "UYU" },
-      { name: "Efectivo dólares", kind: "cash", currency: "USD" },
+      { name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "0", openingDate: "2026-01-01" },
+      { name: "Efectivo dólares", kind: "cash", currency: "USD", openingBalance: "0", openingDate: "2026-01-01" },
     ]) {
       const response = await accountsCollectionResponse(
         request("/api/accounts", "POST", input),
@@ -109,6 +109,8 @@ describe("cuentas propias", () => {
         name: "Itaú",
         kind: "bank",
         currency: "UYU",
+        openingBalance: "0",
+        openingDate: "2026-01-01",
       }),
       db,
       ownerAccess,
@@ -132,11 +134,13 @@ describe("cuentas propias", () => {
       kind: "bank",
       currency: "UYU",
       archivedAt: null,
+      openingBalance: "0.00",
+      openingDate: "2026-01-01",
     });
   });
 
   it("archiva una cuenta propia y la excluye de nuevas listas", async () => {
-    const created = await accountsCollectionResponse(request("/api/accounts", "POST", { name: "Cuenta vieja", kind: "bank", currency: "UYU" }), db, ownerAccess);
+    const created = await accountsCollectionResponse(request("/api/accounts", "POST", { name: "Cuenta vieja", kind: "bank", currency: "UYU", openingBalance: "0", openingDate: "2026-01-01" }), db, ownerAccess);
     const account = await created.json();
     const archived = await accountResourceResponse(request(`/api/accounts/${account.id}/archive`, "POST"), account.id, db, ownerAccess);
     expect(archived.status).toBe(200);

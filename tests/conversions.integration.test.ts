@@ -88,6 +88,8 @@ beforeEach(async () => {
   ]);
 });
 
+beforeEach(async () => { await db.update(schema.financialAccount).set({ openingBalance: "0.00", openingDate: "2000-01-01" }); });
+
 afterAll(async () => database.close());
 
 describe("conversiones USD y UYU", () => {

@@ -47,7 +47,7 @@ const issueLabels: Record<string, string> = {
   INVALID_ACCOUNT: "Falta la cuenta de origen.",
   INVALID_CATEGORY: "Falta la categoría.",
   INVALID_CURRENCY: "Falta una moneda válida.",
-  ACCOUNT_NOT_FOUND: "La cuenta elegida no está disponible.",
+  ACCOUNT_NOT_FOUND: "La cuenta no está disponible, no tiene saldo inicial o la fecha es anterior a su fecha inicial. Configurá el saldo o corregí la cuenta o la fecha.",
   CATEGORY_NOT_FOUND: "La categoría elegida no está disponible.",
   CURRENCY_MISMATCH: "La moneda no coincide con la cuenta.",
   FINANCIAL_NATURE_REQUIRED:

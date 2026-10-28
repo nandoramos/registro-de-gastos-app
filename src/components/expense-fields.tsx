@@ -11,7 +11,7 @@ export const expenseErrorMessages: Record<string, string> = {
   INVALID_NOTE: "La nota puede tener hasta 1000 caracteres.",
   INVALID_AMOUNT: "Ingresá un importe positivo con hasta 2 decimales.",
   INVALID_CURRENCY: "Elegí una moneda admitida.",
-  ACCOUNT_NOT_FOUND: "La cuenta elegida ya no está disponible.",
+  ACCOUNT_NOT_FOUND: "La cuenta no está disponible, no tiene saldo inicial o la fecha del movimiento es anterior a su fecha inicial. Configurá el saldo o corregí la cuenta o la fecha.",
   CATEGORY_NOT_FOUND: "La categoría elegida ya no está disponible.",
   CURRENCY_MISMATCH: "La moneda debe coincidir con la cuenta de origen.",
 };

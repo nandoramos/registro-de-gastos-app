@@ -1,9 +1,11 @@
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { GetAccess } from "@/modules/auth/http";
-import { validateAccountCreation, validateAccountRename } from "./domain";
+import { validateAccountCreation, validateAccountRename, validateOpeningBalance } from "./domain";
 import {
   createAccount,
+  configureOpeningBalance,
   archiveAccount,
+  unarchiveAccount,
   listAccounts,
   renameAccount,
   type AccountsDatabase,
@@ -75,8 +77,22 @@ export async function accountResourceResponse<T extends PgQueryResultHKT>(
   try {
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/opening-balance")) {
+      const input = await readJson(request);
+      if (!input || typeof input !== "object" || !("amount" in input) || !("date" in input) || typeof input.amount !== "string" || typeof input.date !== "string") return Response.json({ error: "INVALID_OPENING_BALANCE" }, { status: 422, headers });
+      const validation = validateOpeningBalance({ amount: input.amount, date: input.date });
+      if (!validation.ok) return Response.json({ error: validation.error }, { status: 422, headers });
+      const account = await configureOpeningBalance(db, access.userId, accountId, validation.value);
+      if (!account) return Response.json({ error: "NOT_FOUND_OR_ALREADY_CONFIGURED" }, { status: 404, headers });
+      const updated = (await listAccounts(db, access.userId, true)).find((item) => item.id === account.id);
+      return Response.json(updated, { headers });
+    }
     if (request.method === "POST" && new URL(request.url).pathname.endsWith("/archive")) {
       const account = await archiveAccount(db, access.userId, accountId);
+      return account ? Response.json(account, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/unarchive")) {
+      const account = await unarchiveAccount(db, access.userId, accountId);
       return account ? Response.json(account, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     }
     if (request.method !== "PATCH") {

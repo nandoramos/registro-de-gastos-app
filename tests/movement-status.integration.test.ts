@@ -8,6 +8,8 @@ import { changeMovementStatus, getMovementStatusHistory, listVoidedMovements } f
 const database = new PGlite(); const db = drizzle(database, { schema });
 beforeAll(async () => { await migrate(db, { migrationsFolder: "drizzle" }); await db.insert(schema.user).values([{ id: "owner", name: "Owner", email: "owner@example.test" }, { id: "other", name: "Other", email: "other@example.test" }]); await db.insert(schema.financialAccount).values([{ id: "account", userId: "owner", name: "Origen", kind: "bank", currency: "UYU" }, { id: "account-2", userId: "owner", name: "Destino", kind: "bank", currency: "UYU" }, { id: "account-usd", userId: "owner", name: "Dólares", kind: "bank", currency: "USD" }, { id: "other-account", userId: "other", name: "Ajena", kind: "bank", currency: "UYU" }]); await db.insert(schema.expenseCategory).values([{ id: "category", userId: "owner", name: "Categoría" }, { id: "other-category", userId: "other", name: "Categoría ajena" }]); });
 beforeEach(async () => { await db.delete(schema.movementStatusEvent); await db.delete(schema.expense); await db.delete(schema.ownTransfer); await db.delete(schema.currencyConversion); await db.delete(schema.sourceEvent); });
+beforeEach(async () => { await db.update(schema.financialAccount).set({ openingBalance: "0.00", openingDate: "2000-01-01" }); });
+
 afterAll(async () => database.close());
 
 async function movement(type: "expense" | "transfer" | "conversion", id: string, userId = "owner") {

@@ -80,6 +80,8 @@ beforeEach(async () => {
   });
 });
 
+beforeEach(async () => { await db.update(schema.financialAccount).set({ openingBalance: "0.00", openingDate: "2000-01-01" }); });
+
 afterAll(async () => database.close());
 
 describe("ingesta de texto de email", () => {
@@ -164,6 +166,8 @@ Importe debitado: USD 20,00`;
       name: "Dólares propios",
       kind: "bank",
       currency: "USD",
+      openingBalance: "0.00",
+      openingDate: "2000-01-01",
     });
     const assigned = await ingestEmailCandidate(db, "email-owner", {
       text: usdText,
@@ -193,6 +197,8 @@ Importe debitado: USD 20,00`;
       name: "Dólares propios",
       kind: "bank",
       currency: "USD",
+      openingBalance: "0.00",
+      openingDate: "2000-01-01",
     });
     const result = await ingestEmailCandidate(db, "email-owner", {
       text,

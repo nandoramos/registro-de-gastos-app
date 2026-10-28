@@ -120,6 +120,8 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
       id: schema.financialAccount.id,
       currency: schema.financialAccount.currency,
       archivedAt: schema.financialAccount.archivedAt,
+      openingBalance: schema.financialAccount.openingBalance,
+      openingDate: schema.financialAccount.openingDate,
     })
     .from(schema.financialAccount)
     .where(
@@ -129,6 +131,7 @@ export async function validateExpenseReferences<T extends PgQueryResultHKT>(
       ),
     );
   if (!account || (account.archivedAt && input.accountId !== retainedArchived?.accountId)) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
+  if (account.openingBalance == null || account.openingDate == null || input.operationDate < account.openingDate) return { ok: false, error: "ACCOUNT_NOT_FOUND" };
   if (account.currency !== input.currency) {
     return { ok: false, error: "CURRENCY_MISMATCH" };
   }

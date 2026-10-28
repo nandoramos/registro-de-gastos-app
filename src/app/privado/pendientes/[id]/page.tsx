@@ -24,7 +24,7 @@ export default async function PendingEntryPage({
   const db = getAuthRuntime().db;
   const [entry, accounts, categories, pendingCount] = await Promise.all([
     getPendingEntry(db, access.userId, (await params).id),
-    listAccounts(db, access.userId),
+    listAccounts(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
     listCategories(db, access.userId),
     countPendingEntries(db, access.userId),
   ]);

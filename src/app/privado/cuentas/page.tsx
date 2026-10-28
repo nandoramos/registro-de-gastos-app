@@ -13,7 +13,7 @@ export default async function AccountsPage() {
 
   let accounts;
   try {
-    accounts = await listAccounts(getAuthRuntime().db, access.userId);
+    accounts = await listAccounts(getAuthRuntime().db, access.userId, true);
   } catch {
     redirect("/login?error=unavailable");
   }

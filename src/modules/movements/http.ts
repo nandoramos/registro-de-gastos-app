@@ -8,6 +8,6 @@ export async function movementStatusResponse<T extends PgQueryResultHKT>(request
   if (access.status !== "authorized") return Response.json({ error: access.status.toUpperCase() }, { status: access.status === "unauthenticated" ? 401 : 403 });
   if (!(["expense", "transfer", "conversion"] as string[]).includes(type) || !(["void", "restore"] as string[]).includes(action)) return Response.json({ error: "NOT_FOUND" }, { status: 404 });
   const result = await changeMovementStatus(db, access.userId, type as MovementType, id, action as MovementAction);
-  if (!result.ok) return Response.json({ error: result.error }, { status: 404 });
+  if (!result.ok) return Response.json({ error: result.error }, { status: result.error === "NOT_FOUND" ? 404 : 422 });
   return Response.json({ status: action === "void" ? "voided" : "active", changed: result.changed });
 }

@@ -65,9 +65,10 @@ export function validOperationDate(value: unknown): value is string {
     return false;
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Montevideo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   return (
     !Number.isNaN(parsed.valueOf()) &&
-    parsed.toISOString().slice(0, 10) === value
+    parsed.toISOString().slice(0, 10) === value && value <= today
   );
 }
 

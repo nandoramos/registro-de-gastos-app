@@ -110,6 +110,8 @@ export const financialAccount = pgTable(
     name: text("name").notNull(),
     kind: text("kind").$type<"bank" | "cash">().notNull(),
     currency: text("currency").$type<"UYU" | "USD">().notNull(),
+    openingBalance: numeric("opening_balance", { precision: 18, scale: 2 }),
+    openingDate: date("opening_date"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -121,6 +123,7 @@ export const financialAccount = pgTable(
   (table) => [
     index("financial_account_user_idx").on(table.userId),
     check("financial_account_name_not_blank", sql`btrim(${table.name}) <> ''`),
+    check("financial_account_opening_valid", sql`(${table.openingBalance} is null and ${table.openingDate} is null) or (${table.openingBalance} is not null and ${table.openingDate} is not null and ${table.openingBalance} >= 0)`),
     check(
       "financial_account_kind_allowed",
       sql`${table.kind} in ('bank', 'cash')`,

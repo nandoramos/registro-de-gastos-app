@@ -12,7 +12,7 @@ export default async function NewConversionPage() {
   const access = await requireAuthorizedPage();
   let accounts;
   try {
-    accounts = await listAccounts(getAuthRuntime().db, access.userId);
+    accounts = (await listAccounts(getAuthRuntime().db, access.userId)).filter((account) => account.openingBalance != null);
   } catch {
     redirect("/login?error=unavailable");
   }

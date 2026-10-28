@@ -1,7 +1,8 @@
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull, inArray } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
+import { validOperationDate } from "@/modules/expenses/domain";
 
 export type MovementType = "expense" | "transfer" | "conversion";
 export type MovementAction = "void" | "restore";
@@ -30,6 +31,18 @@ export async function changeMovementStatus<T extends PgQueryResultHKT>(
     const voiding = action === "void";
     if ((voiding && movement.voidedAt) || (!voiding && !movement.voidedAt)) {
       return { ok: true as const, changed: false as const };
+    }
+    if (!voiding) {
+      const rows = movementType === "expense"
+        ? await transaction.select({ date: schema.expense.operationDate, source: schema.expense.accountId }).from(schema.expense).where(and(eq(schema.expense.id, movementId), eq(schema.expense.userId, userId)))
+        : movementType === "transfer"
+          ? await transaction.select({ date: schema.ownTransfer.operationDate, source: schema.ownTransfer.sourceAccountId, destination: schema.ownTransfer.destinationAccountId }).from(schema.ownTransfer).where(and(eq(schema.ownTransfer.id, movementId), eq(schema.ownTransfer.userId, userId)))
+          : await transaction.select({ date: schema.currencyConversion.operationDate, source: schema.currencyConversion.sourceAccountId, destination: schema.currencyConversion.destinationAccountId }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.id, movementId), eq(schema.currencyConversion.userId, userId)));
+      const current = rows[0];
+      if (!validOperationDate(current.date)) return { ok: false as const, error: "INVALID_DATE" as const };
+      const ids = [current.source, ...("destination" in current && typeof current.destination === "string" ? [current.destination] : [])];
+      const accounts = await transaction.select({ openingBalance: schema.financialAccount.openingBalance, openingDate: schema.financialAccount.openingDate }).from(schema.financialAccount).where(and(eq(schema.financialAccount.userId, userId), inArray(schema.financialAccount.id, ids)));
+      if (accounts.length !== ids.length || accounts.some((account) => account.openingBalance == null || account.openingDate == null || current.date < account.openingDate)) return { ok: false as const, error: "ACCOUNT_NOT_CONFIGURED" as const };
     }
     await transaction
       .update(table)

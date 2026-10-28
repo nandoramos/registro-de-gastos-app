@@ -17,6 +17,44 @@ afterEach(() => {
 });
 
 describe("gestión de cuentas", () => {
+  it("ofrece preparar la cuenta Billetera en pesos sin inventar su saldo", async () => {
+    const user = userEvent.setup();
+    render(<AccountsManager initialAccounts={[]} />);
+    await user.click(screen.getByRole("button", { name: "Agregar Billetera" }));
+    expect((screen.getByLabelText("Nombre") as HTMLInputElement).value).toBe("Billetera");
+    expect((screen.getByLabelText("Tipo") as HTMLSelectElement).value).toBe("cash");
+    expect((screen.getByLabelText("Saldo inicial") as HTMLInputElement).value).toBe("");
+  });
+  it("muestra totales iniciales por moneda e indica cuentas sin configurar", () => {
+    render(<AccountsManager initialAccounts={[
+      { id: "a", name: "Pesos", kind: "bank", currency: "UYU", openingBalance: "100.20", openingDate: "2026-10-28" },
+      { id: "b", name: "Sin saldo", kind: "bank", currency: "USD", openingBalance: null, openingDate: null },
+    ]} />);
+    expect(screen.getByText(/total general está incompleto/i)).toBeTruthy();
+    expect(screen.getByText(/total UYU: 100,20/i)).toBeTruthy();
+  });
+  it("muestra cuentas archivadas y permite recuperarlas", async () => {
+    const user = userEvent.setup();
+    const account = { id: "old", name: "Cuenta anterior", kind: "bank" as const, currency: "UYU" as const, archivedAt: new Date(), openingBalance: "20.00", openingDate: "2026-10-28" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ...account, archivedAt: null })));
+    render(<AccountsManager initialAccounts={[account]} />);
+    expect(screen.queryByText("Cuenta anterior")).toBeNull();
+    await user.click(screen.getByLabelText("Mostrar archivadas"));
+    await user.click(screen.getByRole("button", { name: "Desarchivar" }));
+    expect(await screen.findByRole("button", { name: "Archivar" })).toBeTruthy();
+  });
+  it("permite configurar el saldo inicial de una cuenta existente sin asumir cero", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "existing", name: "Billetera", kind: "cash", currency: "UYU", openingBalance: "150.00", openingDate: "2026-10-28" }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<AccountsManager initialAccounts={[{ id: "existing", name: "Billetera", kind: "cash", currency: "UYU", openingBalance: null, openingDate: null }]} />);
+    expect(screen.getByText(/saldo inicial pendiente/i)).toBeTruthy();
+    await user.type(screen.getByLabelText("Saldo inicial de Billetera"), "150");
+    await user.clear(screen.getByLabelText("Fecha inicial de Billetera"));
+    await user.type(screen.getByLabelText("Fecha inicial de Billetera"), "2026-10-28");
+    await user.click(screen.getByRole("button", { name: "Guardar saldo inicial de Billetera" }));
+    expect(await screen.findByText(/Saldo: UYU 150,00/)).toBeTruthy();
+  });
   it("crea una cuenta desde la interfaz y la muestra sin recargar", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json(
@@ -36,6 +74,9 @@ describe("gestión de cuentas", () => {
     await user.type(screen.getByLabelText("Nombre"), "Efectivo dólares");
     await user.selectOptions(screen.getByLabelText("Tipo"), "cash");
     await user.selectOptions(screen.getByLabelText("Moneda"), "USD");
+    await user.type(screen.getByLabelText("Saldo inicial"), "120,50");
+    await user.clear(screen.getByLabelText("Fecha inicial"));
+    await user.type(screen.getByLabelText("Fecha inicial"), "2026-10-28");
     await user.click(screen.getByRole("button", { name: "Agregar cuenta" }));
 
     await screen.findByText("Efectivo dólares");
@@ -48,6 +89,8 @@ describe("gestión de cuentas", () => {
           name: "Efectivo dólares",
           kind: "cash",
           currency: "USD",
+          openingBalance: "120,50",
+          openingDate: "2026-10-28",
         }),
       }),
     );
@@ -108,6 +151,7 @@ describe("gestión de cuentas", () => {
 
     render(<AccountsManager initialAccounts={[]} />);
     await user.type(screen.getByLabelText("Nombre"), "Cuenta");
+    await user.type(screen.getByLabelText("Saldo inicial"), "0");
     await user.click(screen.getByRole("button", { name: "Agregar cuenta" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain(

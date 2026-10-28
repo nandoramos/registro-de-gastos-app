@@ -15,7 +15,7 @@ export default async function NewEmailEntryPage() {
   let categories;
   try {
     [accounts, categories] = await Promise.all([
-      listAccounts(getAuthRuntime().db, access.userId),
+      listAccounts(getAuthRuntime().db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
       listCategories(getAuthRuntime().db, access.userId),
     ]);
   } catch {

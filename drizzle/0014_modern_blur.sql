@@ -1,0 +1,3 @@
+ALTER TABLE "financial_account" ADD COLUMN "opening_balance" numeric(18, 2);--> statement-breakpoint
+ALTER TABLE "financial_account" ADD COLUMN "opening_date" date;--> statement-breakpoint
+ALTER TABLE "financial_account" ADD CONSTRAINT "financial_account_opening_valid" CHECK (("financial_account"."opening_balance" is null and "financial_account"."opening_date" is null) or ("financial_account"."opening_balance" is not null and "financial_account"."opening_date" is not null and "financial_account"."opening_balance" >= 0));

@@ -172,8 +172,8 @@ const issueLabels: Record<string, string> = {
   INVALID_CURRENCY: "Falta una moneda válida.",
   AMOUNTS_MISMATCH:
     "Los importes deben ser iguales en transferencias de la misma moneda.",
-  SOURCE_ACCOUNT_NOT_FOUND: "La cuenta de origen no está disponible.",
-  DESTINATION_ACCOUNT_NOT_FOUND: "La cuenta de destino no está disponible.",
+  SOURCE_ACCOUNT_NOT_FOUND: "La cuenta de origen no está disponible, no tiene saldo inicial o la fecha es anterior a su fecha inicial. Configurá el saldo o corregí la cuenta o la fecha.",
+  DESTINATION_ACCOUNT_NOT_FOUND: "La cuenta de destino no está disponible, no tiene saldo inicial o la fecha es anterior a su fecha inicial. Configurá el saldo o corregí la cuenta o la fecha.",
   ACCOUNT_CURRENCY_MISMATCH: "Las cuentas deben usar la moneda indicada.",
   DIFFERENT_ACCOUNT_CURRENCIES:
     "Las conversiones entre monedas se registran por separado.",
