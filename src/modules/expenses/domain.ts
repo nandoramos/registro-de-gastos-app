@@ -73,16 +73,27 @@ export function validOperationDate(value: unknown): value is string {
 }
 
 export function normalizeMoneyAmount(value: unknown): string | undefined {
-  if (typeof value !== "string" || !/^\d+(?:[.,]\d{1,2})?$/.test(value)) {
+  if (typeof value !== "string") return undefined;
+  const input = value.trim();
+  const normalized = /^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(input) ? input.replaceAll(".", "").replace(",", ".")
+    : /^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(input) ? input.replaceAll(",", "") : input;
+  if (!/^\d+(?:[.,]\d{1,2})?$/.test(normalized)) {
     return undefined;
   }
-  const [rawWhole, rawFraction = ""] = value.split(/[.,]/);
+  const [rawWhole, rawFraction = ""] = normalized.split(/[.,]/);
   const whole = rawWhole.replace(/^0+(?=\d)/, "");
   const fraction = rawFraction.padEnd(2, "0");
   if (whole.length > 16 || (/^0+$/.test(whole) && /^0*$/.test(fraction))) {
     return undefined;
   }
   return `${whole}.${fraction}`;
+}
+
+export function expenseWouldOverdraw(balance: string | null | undefined, amount: string, previousAmount = "0.00"): boolean {
+  const value = normalizeMoneyAmount(amount);
+  if (balance == null || value == null) return false;
+  const parse = (value: string) => BigInt(value.replace(".", ""));
+  return parse(balance) + parse(previousAmount) - parse(value) < 0n;
 }
 
 export function adaptManualExpense(input: unknown): ValidationResult {

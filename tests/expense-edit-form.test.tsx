@@ -39,6 +39,14 @@ const expense = {
 };
 
 describe("edición de gastos", () => {
+  it("advierte si la corrección dejará saldo negativo", async () => {
+    const user = userEvent.setup();
+    render(<ExpenseEditForm expense={expense} accounts={[{ ...accounts[0], balance: "10.00" }]} categories={categories} />);
+    const amount = screen.getByLabelText("Importe");
+    await user.clear(amount);
+    await user.type(amount, "60");
+    expect(screen.getByText(/saldo negativo/i)).toBeTruthy();
+  });
   it("envía la corrección y confirma que quedó guardada", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({

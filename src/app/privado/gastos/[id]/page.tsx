@@ -97,18 +97,19 @@ export default async function ExpenseDetailPage({
           )}
         </dl>
 
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold">Corregir gasto</h2>
-          <p className="mt-2 text-sm leading-6 text-stone-600">
-            Los cambios válidos se aplican al gasto y quedan registrados en su
-            historial. La evidencia original no se modifica.
-          </p>
-          <ExpenseEditForm
-            expense={expense}
-            accounts={accounts}
-            categories={categories}
-          />
-        </section>
+        {!expense.voidedAt && (
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold">Corregir gasto</h2>
+            <p className="mt-2 text-sm leading-6 text-stone-600">
+              Los cambios válidos se aplican al gasto. La evidencia original no se modifica.
+            </p>
+            <ExpenseEditForm
+              expense={expense}
+              accounts={accounts}
+              categories={categories}
+            />
+          </section>
+        )}
 
         <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold">Historial de correcciones</h2>

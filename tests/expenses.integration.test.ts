@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
 import { accountResourceResponse } from "@/modules/accounts/http";
+import { listAccounts } from "@/modules/accounts/service";
+import { changeMovementStatus } from "@/modules/movements/status";
 import {
   expenseResourceResponse,
   expensesCollectionResponse,
@@ -105,6 +107,23 @@ afterAll(async () => {
 });
 
 describe("registro manual de gastos", () => {
+  it("actualiza el saldo al registrar, editar, anular y restaurar un gasto", async () => {
+    const balance = async () => (await listAccounts(db, "expense-owner")).find((account) => account.id === "owner-account")?.balance;
+    const created = await expensesCollectionResponse(request("/api/expenses", "POST", { ...completeExpense, amount: "20" }), db, ownerAccess);
+    expect(created.status).toBe(201);
+    const { id } = await created.json();
+    expect(await balance()).toBe("-20.00");
+    const edited = await expenseResourceResponse(request(`/api/expenses/${id}`, "PATCH", { ...completeExpense, amount: "30" }), id, db, ownerAccess);
+    expect(edited.status).toBe(200);
+    expect(await db.select().from(schema.expenseRevision)).toHaveLength(0);
+    expect(await balance()).toBe("-30.00");
+    await changeMovementStatus(db, "expense-owner", "expense", id, "void");
+    expect(await balance()).toBe("0.00");
+    const forbiddenEdit = await expenseResourceResponse(request(`/api/expenses/${id}`, "PATCH", completeExpense), id, db, ownerAccess);
+    expect(forbiddenEdit.status).toBe(422);
+    await changeMovementStatus(db, "expense-owner", "expense", id, "restore");
+    expect(await balance()).toBe("-30.00");
+  });
   it("registra un gasto completo y permite consultar su evidencia y procedencia", async () => {
     const created = await expensesCollectionResponse(
       request("/api/expenses", "POST", completeExpense),
@@ -234,7 +253,7 @@ describe("registro manual de gastos", () => {
     expect(response.status).toBe(404);
   });
 
-  it("corrige un gasto, conserva la evidencia y agrega el cambio al historial", async () => {
+  it("corrige un gasto y conserva la evidencia sin guardar versiones de edición", async () => {
     const created = await expensesCollectionResponse(
       request("/api/expenses", "POST", completeExpense),
       db,
@@ -269,23 +288,7 @@ describe("registro manual de gastos", () => {
         source: original.source,
       }),
     );
-    expect(body.history).toEqual([
-      expect.objectContaining({
-        previous: expect.objectContaining({
-          title: "Mercado sintético",
-          amount: "1250.50",
-          categoryId: "owner-category",
-          accountId: "owner-account",
-        }),
-        current: expect.objectContaining({
-          title: "Mercado corregido",
-          amount: "1300.25",
-          categoryId: "owner-category",
-          accountId: "owner-account",
-        }),
-        changedAt: expect.any(String),
-      }),
-    ]);
+    expect(body.history).toEqual([]);
     expect(await db.select().from(schema.sourceEvent)).toHaveLength(1);
   });
 

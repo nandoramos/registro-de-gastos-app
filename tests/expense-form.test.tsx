@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ExpenseForm } from "@/components/expense-form";
+import { currentExpenseDateTime } from "@/components/expense-fields";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(() => {
   cleanup();
@@ -29,6 +32,40 @@ const categories = [
 ];
 
 describe("formulario de gasto manual", () => {
+  it("prepara fecha y hora actuales en la zona horaria de Montevideo", () => {
+    expect(currentExpenseDateTime()).toMatchObject({
+      operationDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      operationTime: expect.stringMatching(/^\d{2}:\d{2}$/),
+    });
+  });
+  it("advierte si el gasto supera el saldo, pero permite registrarlo", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "expense", title: "Compra", amount: "120.00", currency: "UYU" }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ExpenseForm accounts={[{ ...accounts[0], balance: "100.00" }]} categories={categories} />);
+    await user.clear(screen.getByLabelText("Fecha"));
+    await user.type(screen.getByLabelText("Fecha"), "2026-10-18");
+    await user.type(screen.getByLabelText("Título"), "Compra");
+    await user.type(screen.getByLabelText("Importe"), "120");
+    await user.selectOptions(screen.getByLabelText("Categoría"), "food");
+    expect(screen.getByText(/saldo negativo/i)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Registrar gasto" }));
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it("sugiere la fecha y hora actuales y pide elegir categoría", () => {
+    render(<ExpenseForm accounts={accounts} categories={categories} />);
+    expect((screen.getByLabelText("Fecha") as HTMLInputElement).value).not.toBe("");
+    expect((screen.getByLabelText("Hora (opcional)") as HTMLInputElement).value).not.toBe("");
+    expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("");
+  });
+
+  it("advierte el saldo negativo con formatos de miles inequívocos", async () => {
+    const user = userEvent.setup();
+    render(<ExpenseForm accounts={[{ ...accounts[0], balance: "1000.00" }]} categories={categories} />);
+    await user.type(screen.getByLabelText("Importe"), "1.200,50");
+    expect(screen.getByText(/saldo negativo/i)).toBeTruthy();
+  });
   it("envía datos estructurados como texto decimal y muestra el acceso al registro", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json(
@@ -59,7 +96,9 @@ describe("formulario de gasto manual", () => {
     const user = userEvent.setup();
 
     render(<ExpenseForm accounts={accounts} categories={categories} />);
+    await user.clear(screen.getByLabelText("Fecha"));
     await user.type(screen.getByLabelText("Fecha"), "2026-10-18");
+    await user.clear(screen.getByLabelText("Hora (opcional)"));
     await user.type(screen.getByLabelText("Hora (opcional)"), "14:35");
     await user.type(screen.getByLabelText("Título"), "Mercado sintético");
     await user.type(
@@ -96,6 +135,8 @@ describe("formulario de gasto manual", () => {
         }),
       }),
     );
+    expect((screen.getByLabelText("Importe") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("");
   });
 
   it("muestra una validación del servidor sin perder el formulario", async () => {
@@ -110,9 +151,11 @@ describe("formulario de gasto manual", () => {
     const user = userEvent.setup();
 
     render(<ExpenseForm accounts={accounts} categories={categories} />);
+    await user.clear(screen.getByLabelText("Fecha"));
     await user.type(screen.getByLabelText("Fecha"), "2026-10-18");
     await user.type(screen.getByLabelText("Título"), "Compra sintética");
     await user.type(screen.getByLabelText("Importe"), "10");
+    await user.selectOptions(screen.getByLabelText("Categoría"), "food");
     await user.click(screen.getByRole("button", { name: "Registrar gasto" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain(

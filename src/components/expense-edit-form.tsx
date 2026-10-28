@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
-import type { ExpenseDetail } from "@/modules/expenses/domain";
+import { expenseWouldOverdraw, type ExpenseDetail } from "@/modules/expenses/domain";
 import {
   ExpenseFields,
   expenseErrorMessages,
@@ -49,6 +49,11 @@ export function ExpenseEditForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
+  const wouldBeNegative = expenseWouldOverdraw(
+    selectedAccount?.balance,
+    fields.amount.value,
+    selectedAccount?.id === expense.account.id ? expense.amount : "0.00",
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -87,13 +92,18 @@ export function ExpenseEditForm({
         fields={fields}
       />
       <div className="sm:col-span-2">
+        {wouldBeNegative && (
+          <p role="status" className="mb-4 text-sm text-amber-900">
+            Este cambio dejará la cuenta con saldo negativo. Podés guardarlo de todas formas.
+          </p>
+        )}
         <Button disabled={pending || !selectedAccount}>
           {pending ? "Guardando…" : "Guardar cambios"}
         </Button>
         {saved && (
           <div role="status" className="mt-4 text-sm text-emerald-800">
             <p>
-              Cambios guardados. El historial y la evidencia fueron conservados.
+              Cambios guardados. La evidencia original fue conservada.
             </p>
             <a
               href={`/privado/gastos/${expense.id}`}

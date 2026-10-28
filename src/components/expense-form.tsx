@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import {
   ExpenseFields,
+  currentExpenseDateTime,
   expenseErrorMessages,
   useExpenseFields,
 } from "@/components/expense-fields";
 import { Button } from "@/components/ui/button";
+import { expenseWouldOverdraw } from "@/modules/expenses/domain";
 
 type CreatedExpense = {
   id: string;
@@ -25,6 +28,7 @@ export function ExpenseForm({
   accounts: AccountView[];
   categories: CategoryView[];
 }) {
+  const router = useRouter();
   const { fields, selectedAccount, input } = useExpenseFields(
     accounts,
     categories,
@@ -32,6 +36,10 @@ export function ExpenseForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [created, setCreated] = useState<CreatedExpense>();
+  const wouldBeNegative = expenseWouldOverdraw(
+    selectedAccount?.balance,
+    fields.amount.value,
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -50,6 +58,15 @@ export function ExpenseForm({
       };
       if (!response.ok) throw new Error(body.error);
       setCreated(body);
+      fields.title.set("");
+      fields.note.set("");
+      fields.amount.set("");
+      fields.categoryId.set("");
+      const defaults = currentExpenseDateTime();
+      fields.operationDate.set(defaults.operationDate);
+      fields.operationTime.set(defaults.operationTime);
+      fields.accountId.set(accounts[0]?.id ?? "");
+      router.refresh();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
       setError(
@@ -73,6 +90,11 @@ export function ExpenseForm({
           fields={fields}
         />
         <div className="sm:col-span-2">
+          {wouldBeNegative && (
+            <p className="mb-4 text-sm text-amber-900" role="status">
+              Este gasto dejará la cuenta con saldo negativo. Podés registrarlo de todas formas.
+            </p>
+          )}
           <Button disabled={pending || !selectedAccount}>
             {pending ? "Registrando…" : "Registrar gasto"}
           </Button>

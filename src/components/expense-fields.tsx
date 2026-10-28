@@ -6,6 +6,7 @@ import type { CategoryView } from "@/modules/categories/domain";
 
 export const expenseErrorMessages: Record<string, string> = {
   INVALID_DATE: "Ingresá una fecha válida para el gasto.",
+  MOVEMENT_VOIDED: "Restaurá el movimiento antes de editarlo.",
   INVALID_TIME: "Ingresá una hora válida.",
   INVALID_TITLE: "Ingresá un título de hasta 120 caracteres.",
   INVALID_NOTE: "La nota puede tener hasta 1000 caracteres.",
@@ -41,16 +42,35 @@ type InitialExpenseFields = {
   amount?: string;
 };
 
+export function currentExpenseDateTime() {
+  const now = new Date();
+  return {
+    operationDate: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Montevideo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now),
+    operationTime: new Intl.DateTimeFormat("en-GB", {
+      timeZone: "America/Montevideo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(now),
+  };
+}
+
 export function useExpenseFields(
   accounts: AccountView[],
   categories: CategoryView[],
   initial: InitialExpenseFields = {},
 ) {
+  const defaults = currentExpenseDateTime();
   const [operationDate, setOperationDate] = useState(
-    initial.operationDate ?? "",
+    initial.operationDate ?? defaults.operationDate,
   );
   const [operationTime, setOperationTime] = useState(
-    initial.operationTime ?? "",
+    initial.operationTime ?? defaults.operationTime,
   );
   const [title, setTitle] = useState(initial.title ?? "");
   const [note, setNote] = useState(initial.note ?? "");
@@ -58,7 +78,7 @@ export function useExpenseFields(
     initial.accountId ?? accounts[0]?.id ?? "",
   );
   const [categoryId, setCategoryId] = useState(
-    initial.categoryId ?? categories[0]?.id ?? "",
+    initial.categoryId ?? "",
   );
   const [amount, setAmount] = useState(initial.amount ?? "");
   const selectedAccount = accounts.find((account) => account.id === accountId);
@@ -157,6 +177,7 @@ export function ExpenseFields({
           onChange={(event) => fields.categoryId.set(event.target.value)}
           className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none"
         >
+          <option value="">Elegí una categoría</option>
           {categories.map((category) => (
             <option key={category.id} value={category.id} disabled={Boolean(category.archivedAt) && category.id !== fields.categoryId.value}>
               {category.name}

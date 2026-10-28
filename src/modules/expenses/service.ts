@@ -200,6 +200,7 @@ type UpdateResult =
       ok: false;
       error:
         | "NOT_FOUND"
+        | "MOVEMENT_VOIDED"
         | "ACCOUNT_NOT_FOUND"
         | "CATEGORY_NOT_FOUND"
         | "CURRENCY_MISMATCH";
@@ -227,7 +228,7 @@ function storedExpenseInput(input: ExpenseInput): ExpenseInput {
 }
 
 function sameExpenseInput(left: ExpenseInput, right: ExpenseInput): boolean {
-  return (Object.keys(left) as (keyof ExpenseInput)[]).every(
+  return (Object.keys(right) as (keyof ExpenseInput)[]).every(
     (key) => left[key] === right[key],
   );
 }
@@ -253,7 +254,7 @@ export async function updateExpense<T extends PgQueryResultHKT>(
 
   const changed = await db.transaction(async (transaction) => {
     const [previous] = await transaction
-      .select(expenseSnapshotSelection)
+      .select({ ...expenseSnapshotSelection, voidedAt: schema.expense.voidedAt })
       .from(schema.expense)
       .where(
         and(
@@ -263,6 +264,7 @@ export async function updateExpense<T extends PgQueryResultHKT>(
       )
       .for("update");
     if (!previous) return false;
+    if (previous.voidedAt) return "voided" as const;
     if (sameExpenseInput(previous, currentInput)) return "unchanged" as const;
 
     const [current] = await transaction
@@ -277,16 +279,10 @@ export async function updateExpense<T extends PgQueryResultHKT>(
       .returning(expenseSnapshotSelection);
     if (!current) return false;
 
-    await transaction.insert(schema.expenseRevision).values({
-      id: crypto.randomUUID(),
-      expenseId,
-      userId,
-      previous,
-      current,
-    });
     return true;
   });
   if (!changed) return { ok: false, error: "NOT_FOUND" };
+  if (changed === "voided") return { ok: false, error: "MOVEMENT_VOIDED" };
 
   const expense = await getExpenseDetail(db, userId, expenseId);
   if (!expense) throw new Error("Updated expense is unavailable");
