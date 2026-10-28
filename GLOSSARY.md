@@ -8,6 +8,12 @@ Vocabulario para distinguir los movimientos de dinero y su significado en el reg
 Unidad con la que el usuario identifica dónde mantiene su dinero, siempre en una única moneda; puede representar una cuenta bancaria o efectivo. Los fondos en monedas distintas se distinguen en cuentas separadas, aunque pertenezcan al mismo banco.
 _Evitar_: banco como sinónimo de toda cuenta; fuente de datos como sinónimo de cuenta.
 
+**Saldo inicial**:
+Cantidad de dinero indicada por el usuario para una cuenta al comienzo de una fecha de partida. Sirve como base para calcular su saldo a partir de los movimientos de esa fecha y los posteriores.
+
+**Ajuste manual**:
+Movimiento que corrige el saldo de una cuenta a partir del saldo indicado por el usuario. Su importe es la diferencia entre el saldo calculado y el saldo indicado, y puede aumentar o disminuir el saldo. Se muestra en el historial de movimientos; un ajuste negativo se incluye en el gasto total del mes y uno positivo en el total de ingresos. Su causa puede ser desconocida.
+
 **Cuenta de origen**:
 Cuenta de la que sale el dinero de una operación. En un gasto identifica con qué fondos se pagó, independientemente de cómo se recibió la información.
 _Evitar_: origen del email o canal de ingreso como sinónimo de cuenta de origen.
