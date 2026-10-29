@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("el ingreso es usable en móvil y no produce desplazamiento horizontal", async ({
+test("la pantalla de acceso cabe en el viewport configurado", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -26,7 +26,7 @@ test("no muestra contenido privado sin sesión", async ({ page }) => {
 test("un fallo de ingreso muestra un mensaje y permite reintentar", async ({
   page,
 }) => {
-  await page.route("**/api/auth/sign-in/social", (route) =>
+  await page.route("**/api/auth/**", (route) =>
     route.fulfill({
       status: 503,
       contentType: "application/json",
@@ -34,6 +34,7 @@ test("un fallo de ingreso muestra un mensaje y permite reintentar", async ({
     }),
   );
   await page.goto("/login");
+  await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Continuar con Google" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "No pudimos iniciar sesión",
