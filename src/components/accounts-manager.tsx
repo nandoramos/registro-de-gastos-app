@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type {
   AccountCurrency,
@@ -204,6 +205,7 @@ export function AccountsManager({
                           : "Efectivo"}{" "}
                         · {account.currency}
                       </p>
+                      <Link href={`/privado/historial?accountId=${encodeURIComponent(account.id)}&includeHouse=true`} className="mt-2 inline-block text-sm font-medium text-emerald-800 underline">Ver movimientos de esta cuenta</Link>
                       {account.openingBalance != null ? <p>Saldo: {account.currency} {(account.balance ?? account.openingBalance).replace(".", ",")}</p> : <OpeningBalanceForm account={account} onSaved={(saved) => setAccounts((current) => current.map((item) => item.id === saved.id ? saved : item))} />}
                     </div>
                     <Button

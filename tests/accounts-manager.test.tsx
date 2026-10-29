@@ -17,6 +17,10 @@ afterEach(() => {
 });
 
 describe("gestión de cuentas", () => {
+  it("ofrece abrir la actividad de la cuenta incluyendo Casa Nueva", () => {
+    render(<AccountsManager initialAccounts={[{ id: "itau-uyu", name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "100.00", openingDate: "2026-01-01" }]} />);
+    expect(screen.getByRole("link", { name: "Ver movimientos de esta cuenta" }).getAttribute("href")).toBe("/privado/historial?accountId=itau-uyu&includeHouse=true");
+  });
   it("ofrece preparar la cuenta Billetera en pesos sin inventar su saldo", async () => {
     const user = userEvent.setup();
     render(<AccountsManager initialAccounts={[]} />);
