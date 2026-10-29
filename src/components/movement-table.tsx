@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AccountView } from "@/modules/accounts/domain";
+import type { AccountCurrency, AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import type { MovementHistoryItem } from "@/modules/movements/history";
 import type { MovementType } from "@/modules/movements/status";
+import type { PendingEntryView } from "@/modules/pending-entries/service";
 import { ExpenseEditForm } from "@/components/expense-edit-form";
 import { IncomeEditForm } from "@/components/income-edit-form";
 import { TransferForm } from "@/components/transfer-form";
@@ -33,7 +34,34 @@ function currencyLabel(movement: MovementHistoryItem) {
 }
 function statusClass(movement: MovementHistoryItem) { return movement.voidedAt ? "bg-red-500" : "bg-emerald-500"; }
 
-export function MovementTable({ movements, accounts, categories }: { movements: MovementHistoryItem[]; accounts: AccountView[]; categories: CategoryView[] }) {
+function formatDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}/${month}/${year.slice(-2)}` : value;
+}
+
+function recordText(record: Record<string, unknown>, field: string) {
+  const value = record[field];
+  return typeof value === "string" ? value : "";
+}
+
+function pendingTypeLabel(entry: PendingEntryView) {
+  const type = entry.interpretation.entryType;
+  if (type === "income") return "Ingreso";
+  if (type === "own-transfer") return entry.interpretation.kind === "withdrawal" ? "Retiro" : "Transferencia";
+  if (type === "conversion") return "Conversión";
+  return "Gasto";
+}
+
+function safePendingAmount(currency: string, amount: string) {
+  if (currency !== "UYU" && currency !== "USD") return "—";
+  try {
+    return formatMoneyAmount(currency as AccountCurrency, amount);
+  } catch {
+    return "—";
+  }
+}
+
+export function MovementTable({ movements, pendingEntries = [], accounts, categories }: { movements: MovementHistoryItem[]; pendingEntries?: PendingEntryView[]; accounts: AccountView[]; categories: CategoryView[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<SelectedMovement>();
   const [loading, setLoading] = useState(false);
@@ -72,20 +100,59 @@ export function MovementTable({ movements, accounts, categories }: { movements: 
     return <AdjustmentEditForm adjustment={detail as never} accounts={accounts} onSaved={afterSave} />;
   }
 
+  const rows = [
+    ...movements.map((movement) => ({ kind: "movement" as const, movement, date: movement.date })),
+    ...pendingEntries.map((entry) => {
+      const date = recordText(entry.interpretation, "operationDate") || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Montevideo", year: "numeric", month: "2-digit", day: "2-digit" }).format(entry.receivedAt);
+      return { kind: "pending" as const, entry, date };
+    }),
+  ].sort((left, right) => right.date.localeCompare(left.date) || (left.kind === "movement" && right.kind === "movement" ? (right.movement.operationTime ?? "").localeCompare(left.movement.operationTime ?? "") : 0));
+
   return <>
-    {movements.length === 0 ? <div className="mt-8 rounded-xl border border-stone-200 p-8 text-center"><p className="font-medium">No hay movimientos para mostrar.</p><p className="mt-2 text-sm text-stone-600">Probá cambiar el mes o los filtros.</p></div> : <div className="mt-8 rounded-xl border border-stone-200">
+    {rows.length === 0 ? <div className="mt-8 rounded-xl border border-stone-200 p-8 text-center"><p className="font-medium">No hay movimientos para mostrar.</p><p className="mt-2 text-sm text-stone-600">Probá cambiar el mes o los filtros.</p></div> : <div className="mt-8 overflow-x-auto rounded-xl border border-stone-200">
       <table aria-label="Movimientos" className="w-full table-fixed border-collapse text-left text-sm md:table-auto">
-        <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-600"><tr><th scope="col" className="hidden px-3 py-3 md:table-cell">Estado</th><th scope="col" className="w-24 px-2 py-3 text-xs md:w-auto md:px-3">Fecha</th><th scope="col" className="px-2 py-3 md:px-3">Detalle</th><th scope="col" className="w-28 px-2 py-3 text-right text-xs md:w-auto md:px-3 md:text-sm">Importe</th><th scope="col" className="hidden px-3 py-3 md:table-cell">Moneda</th><th scope="col" className="hidden px-3 py-3 md:table-cell">Cuenta</th><th scope="col" className="hidden px-3 py-3 lg:table-cell">Categoría</th><th scope="col" className="w-12 px-1 py-3 md:px-3"><span className="sr-only">Acciones</span></th></tr></thead>
-        <tbody className="divide-y divide-stone-200">{movements.map((movement) => <tr key={`${movement.type}-${movement.id}`} className="align-top hover:bg-stone-50/60">
-          <td className="hidden px-3 py-4 md:table-cell"><span title={status(movement)} aria-label={status(movement)} className={`inline-block h-2.5 w-2.5 rounded-full ${statusClass(movement)}`} /><span className="sr-only">{status(movement)}</span></td>
-          <td className="whitespace-nowrap px-2 py-4 text-xs tabular-nums md:px-3 md:text-sm">{movement.date}{movement.operationTime && <span className="block text-xs text-stone-500">{movement.operationTime.slice(0, 5)}</span>}</td>
-          <td className="break-words px-2 py-4 md:px-3"><span className="font-medium">{movement.title}</span><span className="block text-xs text-stone-500">{movement.type === "withdrawal" ? "Retiro" : movement.type === "adjustment" ? "Ajuste manual" : movement.type === "conversion" ? `${movement.withdrawal ? "Retiro · " : ""}Conversión · ${currencyLabel(movement)}` : movement.type === "transfer" ? "Transferencia" : movement.type === "expense" ? movement.category : "Ingreso"}</span><details className="mt-2 text-xs md:hidden"><summary className="cursor-pointer text-stone-500">Más datos</summary><p className="mt-2">Estado: {status(movement)}</p><p>Cuenta: {accountLabel(movement)}</p><p>Moneda: {currencyLabel(movement)}</p><p>Categoría: {movement.category ?? "—"}</p></details></td>
-          <td className={`break-words px-2 py-4 text-right text-xs font-medium tabular-nums md:whitespace-nowrap md:px-3 md:text-sm ${movement.type === "expense" || movement.type === "adjustment" && movement.direction === "decrease" ? "text-red-700" : movement.type === "income" || movement.type === "adjustment" && movement.direction === "increase" ? "text-emerald-400" : ""}`}>{amountLabel(movement)}</td>
-          <td className="hidden px-3 py-4 md:table-cell">{currencyLabel(movement)}</td>
-          <td className="hidden px-3 py-4 md:table-cell">{accountLabel(movement)}<span className="block text-xs text-stone-500">{currencyLabel(movement)}</span></td>
-          <td className="hidden px-3 py-4 lg:table-cell">{movement.category ?? "—"}</td>
-          <td className="px-1 py-4 text-right md:px-3"><button type="button" aria-label={`${movement.voidedAt ? "Consultar" : "Editar"} ${movement.title}`} title={movement.voidedAt ? "Consultar movimiento" : "Editar movimiento"} onClick={(event) => open(movement, event.currentTarget)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg hover:bg-stone-100 focus-visible:outline">{movement.voidedAt ? "⌕" : "✎"}</button></td>
-        </tr>)}</tbody>
+        <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-600"><tr><th scope="col" className="w-8 px-2 py-3 md:w-9 md:px-3"><span className="sr-only">Estado</span></th><th scope="col" className="w-24 px-2 py-3 text-xs md:w-auto md:px-3">Fecha</th><th scope="col" className="px-2 py-3 md:px-3">Detalle</th><th scope="col" className="w-28 px-2 py-3 text-right text-xs md:w-auto md:px-3 md:text-sm">Importe</th><th scope="col" className="hidden px-3 py-3 md:table-cell">Cuenta</th><th scope="col" className="hidden px-3 py-3 lg:table-cell">Categoría</th><th scope="col" className="w-12 px-1 py-3 md:px-3"><span className="sr-only">Acciones</span></th></tr></thead>
+        <tbody className="divide-y divide-stone-200">{rows.map((row) => {
+          if (row.kind === "pending") {
+            const { entry } = row;
+            const title = recordText(entry.interpretation, "title") || "Movimiento sin detalle";
+            const note = recordText(entry.interpretation, "note");
+            const accountId = recordText(entry.interpretation, "accountId") || recordText(entry.interpretation, "sourceAccountId");
+            const account = accounts.find((item) => item.id === accountId)?.name ?? "—";
+            const categoryId = recordText(entry.interpretation, "categoryId");
+            const category = categories.find((item) => item.id === categoryId)?.name ?? "—";
+            const currencyValue = recordText(entry.interpretation, "currency") || recordText(entry.interpretation, "sourceCurrency");
+            const currency = currencyValue === "UYU" || currencyValue === "USD" ? currencyValue : "";
+            const amount = recordText(entry.interpretation, "amount") || recordText(entry.interpretation, "sourceAmount");
+            const destinationCurrencyValue = recordText(entry.interpretation, "destinationCurrency");
+            const destinationCurrency = destinationCurrencyValue === "UYU" || destinationCurrencyValue === "USD" ? destinationCurrencyValue : "";
+            const destinationAmount = recordText(entry.interpretation, "destinationAmount");
+            const amountDisplay = destinationAmount && destinationCurrency
+              ? `${safePendingAmount(currency, amount)} → ${safePendingAmount(destinationCurrency, destinationAmount)}`
+              : amount && currency ? safePendingAmount(currency, amount) : "—";
+            const type = pendingTypeLabel(entry);
+            const operationTime = recordText(entry.interpretation, "operationTime");
+            return <tr key={`pending-${entry.id}`} className="align-top hover:bg-stone-50/60">
+              <td className="hidden px-3 py-4 md:table-cell"><span role="img" title="Pendiente" aria-label="Pendiente" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" /></td>
+              <td className="whitespace-nowrap px-2 py-4 text-xs tabular-nums md:px-3 md:text-sm"><span role="img" className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400 md:hidden" aria-label="Pendiente" />{formatDate(row.date)}{operationTime && <span className="block text-xs text-stone-500">{operationTime.slice(0, 5)}</span>}</td>
+              <td className="min-w-0 break-words px-2 py-4 md:px-3"><span className="font-medium">{title}</span>{note && <span title={note} className="block max-w-xs truncate text-xs text-stone-500">{note}</span>}<span className="block text-xs text-stone-500">{type} · Pendiente</span><details className="mt-2 text-xs md:hidden"><summary className="cursor-pointer text-stone-500">Más datos</summary><p className="mt-2">Cuenta: {account}</p><p>Moneda: {currency || "—"}</p><p>Categoría: {category}</p></details></td>
+              <td className="break-words px-2 py-4 text-right text-xs font-medium tabular-nums md:whitespace-nowrap md:px-3 md:text-sm">{amountDisplay}</td>
+              <td className="hidden px-3 py-4 md:table-cell">{account}<span className="block text-xs text-stone-500">{currency || destinationCurrency ? `${currency || "—"}${destinationCurrency ? ` → ${destinationCurrency}` : ""}` : "—"}</span></td>
+              <td className="hidden px-3 py-4 lg:table-cell">{category}</td>
+              <td className="px-1 py-4 text-right md:px-3"><a href={`/privado/pendientes/${entry.id}`} aria-label={`Editar ${title}`} title="Revisar movimiento pendiente" className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg hover:bg-stone-100 focus-visible:outline">✎</a></td>
+            </tr>;
+          }
+          const { movement } = row;
+          return <tr key={`${movement.type}-${movement.id}`} className="align-top hover:bg-stone-50/60">
+            <td className="hidden px-3 py-4 md:table-cell"><span role="img" title={status(movement)} aria-label={status(movement)} className={`inline-block h-2.5 w-2.5 rounded-full ${statusClass(movement)}`} /></td>
+            <td className="whitespace-nowrap px-2 py-4 text-xs tabular-nums md:px-3 md:text-sm"><span role="img" className={`mr-1 inline-block h-2 w-2 rounded-full md:hidden ${statusClass(movement)}`} aria-label={status(movement)} />{formatDate(movement.date)}{movement.operationTime && <span className="block text-xs text-stone-500">{movement.operationTime.slice(0, 5)}</span>}</td>
+            <td className="min-w-0 break-words px-2 py-4 md:px-3"><span className="font-medium">{movement.title}</span>{movement.note && <span title={movement.note} className="block max-w-xs truncate text-xs text-stone-500">{movement.note}</span>}<span className="block text-xs text-stone-500">{movement.type === "withdrawal" ? "Retiro" : movement.type === "adjustment" ? "Ajuste manual" : movement.type === "conversion" ? `${movement.withdrawal ? "Retiro · " : ""}Conversión · ${currencyLabel(movement)}` : movement.type === "transfer" ? "Transferencia" : movement.type === "expense" ? movement.category : "Ingreso"}</span><details className="mt-2 text-xs md:hidden"><summary className="cursor-pointer text-stone-500">Más datos</summary><p className="mt-2">Estado: {status(movement)}</p><p>Cuenta: {accountLabel(movement)}</p><p>Moneda: {currencyLabel(movement)}</p><p>Categoría: {movement.category ?? "—"}</p></details></td>
+            <td className={`break-words px-2 py-4 text-right text-xs font-medium tabular-nums md:whitespace-nowrap md:px-3 md:text-sm ${movement.type === "expense" || movement.type === "adjustment" && movement.direction === "decrease" ? "text-red-700" : movement.type === "income" || movement.type === "adjustment" && movement.direction === "increase" ? "text-emerald-400" : ""}`}>{amountLabel(movement)}</td>
+            <td className="hidden px-3 py-4 md:table-cell">{accountLabel(movement)}<span className="block text-xs text-stone-500">{currencyLabel(movement)}</span></td>
+            <td className="hidden px-3 py-4 lg:table-cell">{movement.category ?? "—"}</td>
+            <td className="px-1 py-4 text-right md:px-3"><button type="button" aria-label={`${movement.voidedAt ? "Consultar" : "Editar"} ${movement.title}`} title={movement.voidedAt ? "Consultar movimiento" : "Editar movimiento"} onClick={(event) => open(movement, event.currentTarget)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg hover:bg-stone-100 focus-visible:outline">{movement.voidedAt ? "⌕" : "✎"}</button></td>
+          </tr>;
+        })}</tbody>
       </table>
     </div>}
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-8" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><section role="dialog" aria-modal="true" aria-labelledby="movement-dialog-title" tabIndex={-1} onChangeCapture={() => setDirty(true)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); close(); } }} className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-stone-200 bg-white p-5 shadow-2xl sm:p-8"><header className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{status(selected.movement)} · {selected.movement.date}</p><h2 id="movement-dialog-title" className="mt-2 text-2xl font-semibold">Editar movimiento</h2><p className="mt-1 text-sm text-stone-600">{selected.movement.title}</p></div><button ref={closeButton} type="button" onClick={close} aria-label="Cerrar popup" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xl hover:bg-stone-100">×</button></header>

@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
-import { expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MovementFilters } from "@/components/movement-filters";
+
+afterEach(cleanup);
 
 it("muestra un panel móvil que permite combinar varias cuentas, categorías y tipos", async () => {
   const user = userEvent.setup();
@@ -18,4 +20,14 @@ it("muestra un panel móvil que permite combinar varias cuentas, categorías y t
   expect(screen.getByLabelText("Buscar en detalle y nota")).toBeTruthy();
   expect(screen.getByLabelText("Desde")).toBeTruthy();
   expect(screen.getByLabelText("Hasta")).toBeTruthy();
+});
+
+it("mantiene los filtros cerrados al inicio y organiza los controles en tres grupos", () => {
+  render(<MovementFilters accounts={[]} categories={[]} values={{ accountIds: [], categoryIds: [], types: [], currencies: [], status: "active" }} houseMode={false} summary={[]} />);
+  const form = screen.getByRole("form", { name: "Filtros de movimientos" });
+  expect(form.className).toContain("hidden");
+  const groups = [...form.querySelectorAll("[data-filter-group]")].map((group) => group.querySelector(":scope > legend")?.textContent);
+  expect(groups).toEqual(["Buscar / mes / desde / hasta", "Estado / moneda", "Tipo / cuenta / categoría"]);
+  const inputs = [...form.querySelectorAll("label")].map((label) => label.textContent);
+  expect(inputs.slice(0, 4)).toEqual(["Buscar en detalle y nota", "Mes", "Desde", "Hasta"]);
 });
