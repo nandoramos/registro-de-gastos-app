@@ -9,6 +9,7 @@ import { currentExpenseDateTime } from "@/components/expense-fields";
 import { IncomeFields, incomeErrorMessages, useIncomeFields } from "@/components/income-fields";
 import { SavePendingButton } from "@/components/save-pending-button";
 import { formatMoneyAmount } from "@/modules/money/format";
+import { preferredAccountId } from "@/modules/accounts/defaults";
 
 type CreatedIncome = { id: string; title: string; amount: string; currency: "UYU" | "USD" };
 
@@ -40,7 +41,7 @@ export function IncomeForm({ accounts }: { accounts: AccountView[] }) {
       const defaults = currentExpenseDateTime();
       fields.operationDate.set(defaults.operationDate);
       fields.operationTime.set(defaults.operationTime);
-      fields.accountId.set(accounts[0]?.id ?? "");
+      fields.accountId.set(preferredAccountId(accounts, "Itaú dólares", "USD"));
       router.refresh();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";

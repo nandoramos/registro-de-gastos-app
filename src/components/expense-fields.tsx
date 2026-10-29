@@ -2,6 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
+import { preferredAccountId } from "@/modules/accounts/defaults";
 import type { CategoryView } from "@/modules/categories/domain";
 
 export const expenseErrorMessages: Record<string, string> = {
@@ -75,7 +76,7 @@ export function useExpenseFields(
   const [title, setTitle] = useState(initial.title ?? "");
   const [note, setNote] = useState(initial.note ?? "");
   const [accountId, setAccountId] = useState(
-    initial.accountId ?? accounts[0]?.id ?? "",
+    initial.accountId ?? preferredAccountId(accounts, "Itaú pesos", "UYU"),
   );
   const [categoryId, setCategoryId] = useState(
     initial.categoryId ?? "",
@@ -162,6 +163,7 @@ export function ExpenseFields({
           onChange={(event) => fields.accountId.set(event.target.value)}
           className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none"
         >
+          <option value="">Seleccioná una cuenta</option>
           {accounts.map((account) => (
             <option key={account.id} value={account.id} disabled={Boolean(account.archivedAt) && account.id !== fields.accountId.value}>
               {account.name} · {account.currency}

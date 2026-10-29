@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { expenseWouldOverdraw } from "@/modules/expenses/domain";
 import { SavePendingButton } from "@/components/save-pending-button";
 import { formatMoneyAmount } from "@/modules/money/format";
+import { preferredAccountId } from "@/modules/accounts/defaults";
 
 type CreatedExpense = {
   id: string;
@@ -67,7 +68,7 @@ export function ExpenseForm({
       const defaults = currentExpenseDateTime();
       fields.operationDate.set(defaults.operationDate);
       fields.operationTime.set(defaults.operationTime);
-      fields.accountId.set(accounts[0]?.id ?? "");
+      fields.accountId.set(preferredAccountId(accounts, "Itaú pesos", "UYU"));
       router.refresh();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";

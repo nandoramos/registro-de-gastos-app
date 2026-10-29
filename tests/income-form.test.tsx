@@ -17,6 +17,10 @@ const accounts = [
   { id: "itau-uyu", name: "Itaú pesos", kind: "bank" as const, currency: "UYU" as const, balance: "1000.00", openingBalance: "1000.00", openingDate: "2026-01-01", archivedAt: null },
   { id: "prex-usd", name: "Prex dólares", kind: "bank" as const, currency: "USD" as const, balance: "50.00", openingBalance: "50.00", openingDate: "2026-01-01", archivedAt: null },
 ];
+const incomeDefaultAccounts = [
+  ...accounts,
+  { id: "itau-usd", name: "Itaú dólares", kind: "bank" as const, currency: "USD" as const, balance: "20.00", openingBalance: "20.00", openingDate: "2026-01-01", archivedAt: null },
+];
 
 const income = {
   id: "income-1",
@@ -33,11 +37,34 @@ const income = {
 };
 
 describe("formulario de ingresos", () => {
+  it("preselecciona Itaú dólares cuando está activa, aunque no sea la primera cuenta", () => {
+    render(<IncomeForm accounts={incomeDefaultAccounts} />);
+    expect((screen.getByLabelText("Cuenta") as HTMLSelectElement).value).toBe("itau-usd");
+  });
+
+  it("permite elegir otra cuenta y exige elección si falta o está archivada la predeterminada", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<IncomeForm accounts={incomeDefaultAccounts} />);
+    const accountSelect = screen.getByLabelText("Cuenta") as HTMLSelectElement;
+    await user.selectOptions(accountSelect, "itau-uyu");
+    expect(accountSelect.value).toBe("itau-uyu");
+    unmount();
+
+    const alternative = accounts[0]!;
+    const missing = render(<IncomeForm accounts={[alternative]} />);
+    expect((screen.getByLabelText("Cuenta") as HTMLSelectElement).value).toBe("");
+    missing.unmount();
+
+    render(<IncomeForm accounts={[alternative, { ...incomeDefaultAccounts[2]!, archivedAt: new Date() }]} />);
+    expect((screen.getByLabelText("Cuenta") as HTMLSelectElement).value).toBe("");
+  });
+
   it("sugiere Sueldo y fecha y hora actuales, permite editar el detalle y registra el ingreso", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ ...income, id: "saved-income", amount: "900.25" }, { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     render(<IncomeForm accounts={accounts} />);
+    await user.selectOptions(screen.getByLabelText("Cuenta"), "itau-uyu");
     expect((screen.getByLabelText("Detalle") as HTMLInputElement).value).toBe("Sueldo");
     expect((screen.getByLabelText("Fecha") as HTMLInputElement).value).not.toBe("");
     expect((screen.getByLabelText("Hora (opcional)") as HTMLInputElement).value).not.toBe("");

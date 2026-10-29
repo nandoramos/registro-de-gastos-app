@@ -16,7 +16,7 @@ afterEach(() => {
 const accounts = [
   {
     id: "account-uyu",
-    name: "Cuenta pesos",
+    name: "Itaú pesos",
     kind: "bank" as const,
     currency: "UYU" as const,
   },
@@ -26,6 +26,11 @@ const accounts = [
     kind: "cash" as const,
     currency: "USD" as const,
   },
+];
+const defaultAndAlternativeAccounts = [
+  { ...accounts[0], id: "wallet-uyu", name: "Billetera", kind: "cash" as const },
+  { ...accounts[1] },
+  { id: "itau-uyu", name: "Itaú pesos", kind: "bank" as const, currency: "UYU" as const, archivedAt: null },
 ];
 const categories = [
   { id: "food", name: "Alimentación", systemKey: "food" as const },
@@ -59,6 +64,28 @@ describe("formulario de gasto manual", () => {
     expect((screen.getByLabelText("Hora (opcional)") as HTMLInputElement).value).not.toBe("");
     expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("");
     expect(screen.getByRole("button", { name: "Guardar pendiente" })).toBeTruthy();
+  });
+
+  it("preselecciona Itaú pesos cuando está activa, aunque no sea la primera cuenta", () => {
+    render(<ExpenseForm accounts={defaultAndAlternativeAccounts} categories={categories} />);
+    expect((screen.getByLabelText("Cuenta de origen") as HTMLSelectElement).value).toBe("itau-uyu");
+  });
+
+  it("permite elegir otra cuenta y no elige una cuenta distinta si falta o está archivada la predeterminada", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<ExpenseForm accounts={defaultAndAlternativeAccounts} categories={categories} />);
+    const accountSelect = screen.getByLabelText("Cuenta de origen") as HTMLSelectElement;
+    await user.selectOptions(accountSelect, "wallet-uyu");
+    expect(accountSelect.value).toBe("wallet-uyu");
+    unmount();
+
+    const alternative = { ...accounts[0], id: "wallet-uyu", name: "Billetera", kind: "cash" as const };
+    const missing = render(<ExpenseForm accounts={[alternative]} categories={categories} />);
+    expect((screen.getByLabelText("Cuenta de origen") as HTMLSelectElement).value).toBe("");
+    missing.unmount();
+
+    render(<ExpenseForm accounts={[alternative, { ...defaultAndAlternativeAccounts[2], archivedAt: new Date() }]} categories={categories} />);
+    expect((screen.getByLabelText("Cuenta de origen") as HTMLSelectElement).value).toBe("");
   });
 
   it("advierte el saldo negativo con formatos de miles inequívocos", async () => {

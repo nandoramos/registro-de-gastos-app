@@ -2,6 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
+import { preferredAccountId } from "@/modules/accounts/defaults";
 import type { IncomeInput } from "@/modules/incomes/domain";
 import { currentExpenseDateTime } from "@/components/expense-fields";
 
@@ -34,7 +35,7 @@ export function useIncomeFields(accounts: AccountView[], initial: InitialIncome 
   const [operationTime, setOperationTime] = useState(initial.operationTime ?? defaults.operationTime);
   const [title, setTitle] = useState(initial.title ?? "Sueldo");
   const [note, setNote] = useState(initial.note ?? "");
-  const [accountId, setAccountId] = useState(initial.accountId ?? accounts[0]?.id ?? "");
+  const [accountId, setAccountId] = useState(initial.accountId ?? preferredAccountId(accounts, "Itaú dólares", "USD"));
   const [amount, setAmount] = useState(initial.amount ?? "");
   const selectedAccount = accounts.find((account) => account.id === accountId);
   const fields = {
@@ -79,6 +80,7 @@ export function IncomeFields({ accounts, fields }: { accounts: AccountView[]; fi
       <label className="block text-sm font-medium">
         Cuenta
         <select required value={fields.accountId.value} onChange={(event) => fields.accountId.set(event.target.value)} className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none">
+          <option value="">Seleccioná una cuenta</option>
           {accounts.map((account) => <option key={account.id} value={account.id} disabled={Boolean(account.archivedAt) && account.id !== fields.accountId.value}>{account.name} · {account.currency}</option>)}
         </select>
       </label>
