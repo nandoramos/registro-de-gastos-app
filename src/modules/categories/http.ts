@@ -6,6 +6,7 @@ import {
   archiveCategory,
   listCategories,
   renameCategory,
+  unarchiveCategory,
   type CategoriesDatabase,
 } from "./service";
 
@@ -76,6 +77,10 @@ export async function categoryResourceResponse<T extends PgQueryResultHKT>(
     if (access.status !== "authorized") return denied(access.status);
     if (request.method === "POST" && new URL(request.url).pathname.endsWith("/archive")) {
       const category = await archiveCategory(db, access.userId, categoryId);
+      return category ? Response.json(category, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
+    if (request.method === "POST" && new URL(request.url).pathname.endsWith("/unarchive")) {
+      const category = await unarchiveCategory(db, access.userId, categoryId);
       return category ? Response.json(category, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     }
     if (request.method !== "PATCH") {

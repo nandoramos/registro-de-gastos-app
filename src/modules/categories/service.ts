@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import { initialCategories, type CategoryView } from "./domain";
@@ -46,6 +46,11 @@ export async function listCategories<T extends PgQueryResultHKT>(
 
 export async function archiveCategory<T extends PgQueryResultHKT>(db: CategoriesDatabase<T>, userId: string, categoryId: string) {
   const [category] = await db.update(schema.expenseCategory).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.expenseCategory.id, categoryId), eq(schema.expenseCategory.userId, userId), isNull(schema.expenseCategory.archivedAt))).returning(categorySelection); return category;
+}
+
+export async function unarchiveCategory<T extends PgQueryResultHKT>(db: CategoriesDatabase<T>, userId: string, categoryId: string) {
+  const [category] = await db.update(schema.expenseCategory).set({ archivedAt: null, updatedAt: new Date() }).where(and(eq(schema.expenseCategory.id, categoryId), eq(schema.expenseCategory.userId, userId), isNotNull(schema.expenseCategory.archivedAt))).returning(categorySelection);
+  return category;
 }
 
 export async function createCategory<T extends PgQueryResultHKT>(

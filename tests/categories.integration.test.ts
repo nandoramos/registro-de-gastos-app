@@ -156,6 +156,11 @@ describe("categorías de gastos", () => {
     expect((await archived.json()).archivedAt).toEqual(expect.any(String));
     const active = await categoriesCollectionResponse(request("/api/categories"), db, ownerAccess);
     expect((await active.json()).categories.map((item: { id: string }) => item.id)).not.toContain(category.id);
+    const restored = await categoryResourceResponse(request(`/api/categories/${category.id}/unarchive`, "POST"), category.id, db, ownerAccess);
+    expect(restored.status).toBe(200);
+    expect((await restored.json()).archivedAt).toBeNull();
+    const restoredActiveList = await categoriesCollectionResponse(request("/api/categories"), db, ownerAccess);
+    expect((await restoredActiveList.json()).categories.map((item: { id: string }) => item.id)).toContain(category.id);
   });
 
   it.each(["", " ", "x".repeat(81)])(

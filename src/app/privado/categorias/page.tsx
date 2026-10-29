@@ -13,7 +13,7 @@ export default async function CategoriesPage() {
 
   let categories;
   try {
-    categories = await listCategories(getAuthRuntime().db, access.userId);
+    categories = await listCategories(getAuthRuntime().db, access.userId, true);
   } catch {
     redirect("/login?error=unavailable");
   }

@@ -17,6 +17,33 @@ afterEach(() => {
 });
 
 describe("gestión de categorías", () => {
+  it("muestra una categoría por línea y usa botones accesibles de editar y archivar", () => {
+    render(<CategoriesManager initialCategories={[{ id: "food", name: "Alimentación", systemKey: "food" }]} />);
+    const list = screen.getByRole("list");
+    expect(list.className).toContain("flex-col");
+    expect(list.className).not.toContain("grid-cols-2");
+    expect(screen.getByRole("button", { name: "Renombrar Alimentación" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Archivar Alimentación" })).toBeTruthy();
+  });
+
+  it("archiva sin eliminar y permite restaurar una categoría desde archivadas", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ id: "food", name: "Alimentación", systemKey: "food", archivedAt: "2026-10-29T00:00:00.000Z" }))
+      .mockResolvedValueOnce(Response.json({ id: "food", name: "Alimentación", systemKey: "food", archivedAt: null }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<CategoriesManager initialCategories={[{ id: "food", name: "Alimentación", systemKey: "food" }]} />);
+
+    await user.click(screen.getByRole("button", { name: "Archivar Alimentación" }));
+    expect(screen.queryByText("Alimentación")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Mostrar archivadas (1)" }));
+    expect(screen.getByText("Alimentación")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Desarchivar Alimentación" }));
+    await waitFor(() => expect(screen.getByText("Alimentación")).toBeTruthy());
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/categories/food/archive", { method: "POST" });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/categories/food/unarchive", { method: "POST" });
+  });
+
   it("crea una categoría propia y la muestra sin recargar", async () => {
     const fetchMock = vi
       .fn()
@@ -70,7 +97,7 @@ describe("gestión de categorías", () => {
     const categoryRow = within(screen.getByRole("listitem"));
     expect(categoryRow.queryByText(/subcategor/i)).toBeNull();
     expect(categoryRow.queryByRole("button", { name: /eliminar/i })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Renombrar" }));
+    await user.click(screen.getByRole("button", { name: "Renombrar Casa Nueva" }));
     const input = screen.getByLabelText("Nuevo nombre");
     await user.clear(input);
     await user.type(input, "Obra de casa");
