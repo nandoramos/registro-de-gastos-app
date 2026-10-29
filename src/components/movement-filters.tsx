@@ -23,7 +23,7 @@ export type MovementFilterValues = {
   search?: string;
 };
 
-export function MovementFilters({ accounts, categories, values, houseMode, includeHouse = false, summary }: { accounts: AccountView[]; categories: CategoryView[]; values: MovementFilterValues; houseMode: boolean; includeHouse?: boolean; summary: string[] }) {
+export function MovementFilters({ accounts, categories, values, houseMode, includeHouse = false, spendingOnly = false, summary }: { accounts: AccountView[]; categories: CategoryView[]; values: MovementFilterValues; houseMode: boolean; includeHouse?: boolean; spendingOnly?: boolean; summary: string[] }) {
   const [open, setOpen] = useState(false);
   return <section className="mt-7">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -33,6 +33,7 @@ export function MovementFilters({ accounts, categories, values, houseMode, inclu
     <form id="movement-filters-panel" method="get" className={`${open ? "grid" : "hidden"} mt-4 gap-4 rounded-2xl border border-stone-300/15 p-4 sm:p-6 md:grid md:grid-cols-2 xl:grid-cols-4`} onSubmit={() => setOpen(false)}>
       {houseMode && <input type="hidden" name="house" value="true" />}
       {!houseMode && includeHouse && <input type="hidden" name="includeHouse" value="true" />}
+      {spendingOnly && <input type="hidden" name="spending" value="true" />}
       <label className="grid gap-1 text-xs font-medium text-stone-500">Buscar en detalle y nota<input name="search" defaultValue={values.search} type="search" placeholder="Comercio, nota…" className="min-h-11 rounded-lg border border-stone-300/20 px-3 text-sm" /></label>
       <label className="grid gap-1 text-xs font-medium text-stone-500">Mes<input name="month" defaultValue={values.month} type="month" className="min-h-11 rounded-lg border border-stone-300/20 px-3 text-sm" /></label>
       <label className="grid gap-1 text-xs font-medium text-stone-500">Desde<input name="startDate" defaultValue={values.startDate} type="date" className="min-h-11 rounded-lg border border-stone-300/20 px-3 text-sm" /></label>

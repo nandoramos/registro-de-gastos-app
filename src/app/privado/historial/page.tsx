@@ -22,6 +22,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const access = await requireAuthorizedPage();
   const raw = await searchParams;
   const houseMode = one(raw.house) === "true";
+  const spendingOnly = one(raw.spending) === "true";
   const includeHouse = houseMode || one(raw.includeHouse) === "true";
   const startDate = one(raw.startDate);
   const endDate = one(raw.endDate) ?? (houseMode ? today() : undefined);
@@ -43,7 +44,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const effectiveCategoryIds = categoryIds.length ? categoryIds : houseMode && houseCategory ? [houseCategory.id] : [];
   const filters: HistoryFilters = {
     month, startDate, endDate, accountIds, categoryIds: effectiveCategoryIds, types,
-    currencies, status, search: one(raw.search), includeHouse,
+    currencies, status, search: one(raw.search), includeHouse, spendingOnly,
   };
   const movements = await listMovementHistory(db, access.userId, filters);
   const summary = summarizeMovementHistory(movements);
@@ -62,7 +63,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
     <section className="py-8 sm:py-12">
       <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Actividad</p><h1 className="mt-2 text-4xl font-semibold tracking-tight">Movimientos</h1></div><p className="text-sm text-stone-500">{movements.length} {movements.length === 1 ? "movimiento" : "movimientos"}</p></div>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-stone-500">{houseMode ? "Vista Casa Nueva · desde el inicio hasta hoy" : "Gastos de Casa Nueva excluidos de la vista habitual"}</p><Link href={houseMode ? "/privado/historial" : `/privado/historial?house=true&endDate=${today()}`} className="min-h-11 rounded-lg border border-emerald-700/30 px-4 py-3 text-sm font-semibold text-emerald-800">{houseMode ? "Volver a movimientos habituales" : "Ver gastos casa"}</Link></div>
-      <MovementFilters accounts={accounts} categories={categories} values={{ ...filterValues, categoryIds: effectiveCategoryIds }} houseMode={houseMode} includeHouse={includeHouse} summary={activeSummary} />
+      <MovementFilters accounts={accounts} categories={categories} values={{ ...filterValues, categoryIds: effectiveCategoryIds }} houseMode={houseMode} includeHouse={includeHouse} spendingOnly={spendingOnly} summary={activeSummary} />
       {(summary.expenses.length > 0 || summary.income.length > 0) && <section className="mt-6 flex flex-wrap gap-3" aria-label="Totales de movimientos"><h2 className="sr-only">Totales filtrados</h2>{summary.expenses.map((item) => <p key={`expense-${item.currency}`} className="rounded-xl border border-stone-300/15 px-4 py-3 text-sm"><span className="text-stone-500">Gastos {item.currency}</span><strong className="ml-3">{item.amount}</strong></p>)}{summary.income.map((item) => <p key={`income-${item.currency}`} className="rounded-xl border border-stone-300/15 px-4 py-3 text-sm"><span className="text-stone-500">Ingresos {item.currency}</span><strong className="ml-3">{item.amount}</strong></p>)}</section>}
       {pendingEntries.length > 0 && <section className="mt-8 rounded-2xl border border-amber-300/40 bg-amber-300/5 p-4 sm:p-6" aria-labelledby="pending-movements-heading">
         <div className="flex items-center justify-between gap-4"><h2 id="pending-movements-heading" className="text-lg font-semibold">Pendientes ({pendingEntries.length})</h2><p className="text-sm text-stone-500">No afectan saldos ni totales</p></div>

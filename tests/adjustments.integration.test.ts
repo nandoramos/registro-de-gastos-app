@@ -83,6 +83,27 @@ describe("ajustes manuales", () => {
     expect((await listAccounts(db, "adjustment-owner")).find((account) => account.id === "adjustment-account-a")?.balance).toBe("9000.00");
   });
 
+  it("excluye los ajustes de Casa Nueva del total y la lista habitual, pero los muestra al incluirla", async () => {
+    const [house] = await db.select({ id: schema.expenseCategory.id }).from(schema.expenseCategory).where((await import("drizzle-orm")).eq(schema.expenseCategory.systemKey, "house_construction"));
+    const [manual] = await db.select({ id: schema.expenseCategory.id }).from(schema.expenseCategory).where((await import("drizzle-orm")).eq(schema.expenseCategory.systemKey, "manual_adjustment"));
+    await db.insert(schema.sourceEvent).values([
+      { id: "house-adjustment-event", userId: "adjustment-owner", sourceType: "manual", originalPayload: {} },
+      { id: "regular-adjustment-event", userId: "adjustment-owner", sourceType: "manual", originalPayload: {} },
+      { id: "positive-adjustment-event", userId: "adjustment-owner", sourceType: "manual", originalPayload: {} },
+    ]);
+    await db.insert(schema.manualAdjustment).values([
+      { id: "house-adjustment", userId: "adjustment-owner", sourceEventId: "house-adjustment-event", accountId: "adjustment-account-a", categoryId: house.id, operationDate: "2026-10-12", title: "Ajuste de Casa Nueva", direction: "decrease", amount: "25.00" },
+      { id: "regular-adjustment", userId: "adjustment-owner", sourceEventId: "regular-adjustment-event", accountId: "adjustment-account-a", categoryId: manual.id, operationDate: "2026-10-12", title: "Ajuste negativo", direction: "decrease", amount: "15.00" },
+      { id: "positive-adjustment", userId: "adjustment-owner", sourceEventId: "positive-adjustment-event", accountId: "adjustment-account-a", categoryId: manual.id, operationDate: "2026-10-12", title: "Ajuste positivo", direction: "increase", amount: "10.00" },
+    ]);
+
+    expect((await monthlySummary(db, "adjustment-owner", "2026-10")).totals).toEqual([{ currency: "UYU", amount: "15.00" }]);
+    expect((await monthlySummary(db, "adjustment-owner", "2026-10", true)).totals).toEqual([{ currency: "UYU", amount: "40.00" }]);
+    expect((await listMovementHistory(db, "adjustment-owner", { month: "2026-10", type: "adjustment" })).map(({ id }) => id).sort()).toEqual(["positive-adjustment", "regular-adjustment"]);
+    expect((await listMovementHistory(db, "adjustment-owner", { month: "2026-10", type: "adjustment", includeHouse: true })).map(({ id }) => id).sort()).toEqual(["house-adjustment", "positive-adjustment", "regular-adjustment"]);
+    expect((await listMovementHistory(db, "adjustment-owner", { month: "2026-10", types: ["expense", "adjustment"], spendingOnly: true })).map(({ id }) => id)).toEqual(["regular-adjustment"]);
+  });
+
   it("edita cuenta, fecha, dirección e importe y revierte la cuenta anterior", async () => {
     const created = await adjustmentCollectionResponse(
       request("/api/adjustments", "POST", { accountId: "adjustment-account-a", observedBalance: "9000.00" }), db, ownerAccess,
