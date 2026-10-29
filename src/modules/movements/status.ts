@@ -4,7 +4,7 @@ import * as schema from "@/db/schema";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
 import { validOperationDate } from "@/modules/expenses/domain";
 
-export type MovementType = "expense" | "income" | "transfer" | "conversion";
+export type MovementType = "expense" | "income" | "transfer" | "conversion" | "adjustment";
 export type MovementAction = "void" | "restore";
 
 const tables = {
@@ -12,6 +12,7 @@ const tables = {
   income: schema.income,
   transfer: schema.ownTransfer,
   conversion: schema.currencyConversion,
+  adjustment: schema.manualAdjustment,
 } as const;
 
 export async function changeMovementStatus<T extends PgQueryResultHKT>(
@@ -40,7 +41,9 @@ export async function changeMovementStatus<T extends PgQueryResultHKT>(
           ? await transaction.select({ date: schema.income.operationDate, source: schema.income.accountId }).from(schema.income).where(and(eq(schema.income.id, movementId), eq(schema.income.userId, userId)))
           : movementType === "transfer"
           ? await transaction.select({ date: schema.ownTransfer.operationDate, source: schema.ownTransfer.sourceAccountId, destination: schema.ownTransfer.destinationAccountId }).from(schema.ownTransfer).where(and(eq(schema.ownTransfer.id, movementId), eq(schema.ownTransfer.userId, userId)))
-          : await transaction.select({ date: schema.currencyConversion.operationDate, source: schema.currencyConversion.sourceAccountId, destination: schema.currencyConversion.destinationAccountId }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.id, movementId), eq(schema.currencyConversion.userId, userId)));
+          : movementType === "conversion"
+            ? await transaction.select({ date: schema.currencyConversion.operationDate, source: schema.currencyConversion.sourceAccountId, destination: schema.currencyConversion.destinationAccountId }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.id, movementId), eq(schema.currencyConversion.userId, userId)))
+            : await transaction.select({ date: schema.manualAdjustment.operationDate, source: schema.manualAdjustment.accountId }).from(schema.manualAdjustment).where(and(eq(schema.manualAdjustment.id, movementId), eq(schema.manualAdjustment.userId, userId)));
       const current = rows[0];
       if (!validOperationDate(current.date)) return { ok: false as const, error: "INVALID_DATE" as const };
       const ids = [current.source, ...("destination" in current && typeof current.destination === "string" ? [current.destination] : [])];
@@ -79,16 +82,18 @@ export async function listVoidedMovements<T extends PgQueryResultHKT>(
   db: ExpensesDatabase<T>,
   userId: string,
 ) {
-  const [expenses, incomes, transfers, conversions] = await Promise.all([
+  const [expenses, incomes, transfers, conversions, adjustments] = await Promise.all([
     db.select({ id: schema.expense.id, title: schema.expense.title, operationDate: schema.expense.operationDate }).from(schema.expense).where(and(eq(schema.expense.userId, userId), isNotNull(schema.expense.voidedAt))),
     db.select({ id: schema.income.id, title: schema.income.title, operationDate: schema.income.operationDate }).from(schema.income).where(and(eq(schema.income.userId, userId), isNotNull(schema.income.voidedAt))),
     db.select({ id: schema.ownTransfer.id, title: schema.ownTransfer.title, operationDate: schema.ownTransfer.operationDate, kind: schema.ownTransfer.kind }).from(schema.ownTransfer).where(and(eq(schema.ownTransfer.userId, userId), isNotNull(schema.ownTransfer.voidedAt))),
     db.select({ id: schema.currencyConversion.id, title: schema.currencyConversion.title, operationDate: schema.currencyConversion.operationDate }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.userId, userId), isNotNull(schema.currencyConversion.voidedAt))),
+    db.select({ id: schema.manualAdjustment.id, title: schema.manualAdjustment.title, operationDate: schema.manualAdjustment.operationDate }).from(schema.manualAdjustment).where(and(eq(schema.manualAdjustment.userId, userId), isNotNull(schema.manualAdjustment.voidedAt))),
   ]);
   return [
     ...expenses.map((movement) => ({ ...movement, type: "expense" as const })),
     ...incomes.map((movement) => ({ ...movement, type: "income" as const })),
     ...transfers.map(({ kind, ...movement }) => ({ ...movement, type: kind })),
     ...conversions.map((movement) => ({ ...movement, type: "conversion" as const })),
+    ...adjustments.map((movement) => ({ ...movement, type: "adjustment" as const })),
   ].sort((left, right) => right.operationDate.localeCompare(left.operationDate));
 }

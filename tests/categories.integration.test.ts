@@ -50,7 +50,7 @@ afterAll(async () => {
 });
 
 describe("categorías de gastos", () => {
-  it("inicializa una sola vez las 20 categorías acordadas", async () => {
+  it("inicializa una sola vez las 21 categorías acordadas", async () => {
     const first = await categoriesCollectionResponse(
       request("/api/categories"),
       db,
@@ -65,7 +65,7 @@ describe("categorías de gastos", () => {
     expect(second.status).toBe(200);
 
     const body = await second.json();
-    expect(body.categories).toHaveLength(20);
+    expect(body.categories).toHaveLength(21);
     expect(
       body.categories.map((category: { name: string }) => category.name),
     ).toEqual(
@@ -76,9 +76,10 @@ describe("categorías de gastos", () => {
         "Onix - Nafta",
         "ANTEL - celular",
         "Facu",
+        "Ajuste manual",
       ]),
     );
-    expect(await db.select().from(schema.expenseCategory)).toHaveLength(20);
+    expect(await db.select().from(schema.expenseCategory)).toHaveLength(21);
   });
 
   it("crea categorías propias de un solo nivel", async () => {
@@ -189,8 +190,8 @@ describe("categorías de gastos", () => {
       db,
       otherAccess,
     );
-    expect((await otherList.json()).categories).toHaveLength(20);
-    expect(await db.select().from(schema.expenseCategory)).toHaveLength(40);
+    expect((await otherList.json()).categories).toHaveLength(21);
+    expect(await db.select().from(schema.expenseCategory)).toHaveLength(42);
 
     const attemptedRename = await categoryResourceResponse(
       request(`/api/categories/${ownerCategory.id}?user_id=owner`, "PATCH", {

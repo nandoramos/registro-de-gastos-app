@@ -19,6 +19,7 @@ export const initialCategories = [
   ["antel_mobile", "ANTEL - celular"],
   ["ose_country_house", "OSE Casa de campo"],
   ["facu", "Facu"],
+  ["manual_adjustment", "Ajuste manual"],
 ] as const;
 
 export type InitialCategoryKey = (typeof initialCategories)[number][0];

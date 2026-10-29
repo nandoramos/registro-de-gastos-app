@@ -345,6 +345,32 @@ export const income = pgTable(
   ],
 );
 
+export const manualAdjustment = pgTable(
+  "manual_adjustment",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+    sourceEventId: text("source_event_id").notNull().references(() => sourceEvent.id),
+    accountId: text("account_id").notNull().references(() => financialAccount.id),
+    categoryId: text("category_id").references(() => expenseCategory.id),
+    operationDate: date("operation_date", { mode: "string" }).notNull(),
+    title: text("title").notNull().default("Ajuste manual"),
+    note: text("note"),
+    direction: text("direction").$type<"increase" | "decrease">().notNull(),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("manual_adjustment_user_date_idx").on(table.userId, table.operationDate),
+    uniqueIndex("manual_adjustment_source_event_unique").on(table.sourceEventId),
+    check("manual_adjustment_title_not_blank", sql`btrim(${table.title}) <> ''`),
+    check("manual_adjustment_direction_allowed", sql`${table.direction} in ('increase', 'decrease')`),
+    check("manual_adjustment_amount_positive", sql`${table.amount} > 0`),
+  ],
+);
+
 export const expenseRevision = pgTable(
   "expense_revision",
   {
@@ -528,7 +554,7 @@ export const movementStatusEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     movementType: text("movement_type")
-      .$type<"expense" | "income" | "transfer" | "conversion">()
+      .$type<"expense" | "income" | "transfer" | "conversion" | "adjustment">()
       .notNull(),
     movementId: text("movement_id").notNull(),
     action: text("action").$type<"voided" | "restored">().notNull(),
@@ -545,7 +571,7 @@ export const movementStatusEvent = pgTable(
     ),
     check(
       "movement_status_event_type_allowed",
-      sql`${table.movementType} in ('expense', 'income', 'transfer', 'conversion')`,
+      sql`${table.movementType} in ('expense', 'income', 'transfer', 'conversion', 'adjustment')`,
     ),
     check(
       "movement_status_event_action_allowed",

@@ -18,6 +18,19 @@ const accountSelection = {
   openingDate: schema.financialAccount.openingDate,
 };
 
+export function accountBalanceExpression() {
+  return sql<string | null>`case when ${schema.financialAccount.openingBalance} is null then null else (
+    ${schema.financialAccount.openingBalance}
+    - coalesce((select sum(e.amount) from expense e where e.user_id = financial_account.user_id and e.account_id = financial_account.id and e.voided_at is null and e.operation_date >= financial_account.opening_date and e.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    + coalesce((select sum(i.amount) from income i where i.user_id = financial_account.user_id and i.account_id = financial_account.id and i.voided_at is null and i.operation_date >= financial_account.opening_date and i.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    - coalesce((select sum(t.source_amount) from own_transfer t where t.user_id = financial_account.user_id and t.source_account_id = financial_account.id and t.voided_at is null and t.operation_date >= financial_account.opening_date and t.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    + coalesce((select sum(t.destination_amount) from own_transfer t where t.user_id = financial_account.user_id and t.destination_account_id = financial_account.id and t.voided_at is null and t.operation_date >= financial_account.opening_date and t.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    - coalesce((select sum(c.source_amount) from currency_conversion c where c.user_id = financial_account.user_id and c.source_account_id = financial_account.id and c.voided_at is null and c.operation_date >= financial_account.opening_date and c.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    + coalesce((select sum(c.destination_amount) from currency_conversion c where c.user_id = financial_account.user_id and c.destination_account_id = financial_account.id and c.voided_at is null and c.operation_date >= financial_account.opening_date and c.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+    + coalesce((select sum(case when a.direction = 'increase' then a.amount else -a.amount end) from manual_adjustment a where a.user_id = financial_account.user_id and a.account_id = financial_account.id and a.voided_at is null and a.operation_date >= financial_account.opening_date and a.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
+  )::text end`;
+}
+
 export async function configureOpeningBalance<T extends PgQueryResultHKT>(db: AccountsDatabase<T>, userId: string, accountId: string, input: { amount: string; date: string }) {
   const [account] = await db.update(schema.financialAccount)
     .set({ openingBalance: input.amount, openingDate: input.date, updatedAt: new Date() })
@@ -31,15 +44,7 @@ export async function listAccounts<T extends PgQueryResultHKT>(
   userId: string, includeArchived = false,
 ): Promise<AccountView[]> {
   return db
-    .select({ ...accountSelection, balance: sql<string | null>`case when ${schema.financialAccount.openingBalance} is null then null else (
-      ${schema.financialAccount.openingBalance}
-      - coalesce((select sum(e.amount) from expense e where e.user_id = financial_account.user_id and e.account_id = financial_account.id and e.voided_at is null and e.operation_date >= financial_account.opening_date and e.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-      + coalesce((select sum(i.amount) from income i where i.user_id = financial_account.user_id and i.account_id = financial_account.id and i.voided_at is null and i.operation_date >= financial_account.opening_date and i.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-      - coalesce((select sum(t.source_amount) from own_transfer t where t.user_id = financial_account.user_id and t.source_account_id = financial_account.id and t.voided_at is null and t.operation_date >= financial_account.opening_date and t.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-      + coalesce((select sum(t.destination_amount) from own_transfer t where t.user_id = financial_account.user_id and t.destination_account_id = financial_account.id and t.voided_at is null and t.operation_date >= financial_account.opening_date and t.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-      - coalesce((select sum(c.source_amount) from currency_conversion c where c.user_id = financial_account.user_id and c.source_account_id = financial_account.id and c.voided_at is null and c.operation_date >= financial_account.opening_date and c.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-      + coalesce((select sum(c.destination_amount) from currency_conversion c where c.user_id = financial_account.user_id and c.destination_account_id = financial_account.id and c.voided_at is null and c.operation_date >= financial_account.opening_date and c.operation_date <= (now() at time zone 'America/Montevideo')::date), 0)
-    )::text end` })
+    .select({ ...accountSelection, balance: accountBalanceExpression() })
     .from(schema.financialAccount)
     .where(and(eq(schema.financialAccount.userId, userId), ...(includeArchived ? [] : [isNull(schema.financialAccount.archivedAt)])))
     .orderBy(asc(schema.financialAccount.name));

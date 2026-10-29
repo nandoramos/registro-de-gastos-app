@@ -11,7 +11,7 @@ const primary = [
   { label: "Registrar gasto", href: "/privado/gastos/nuevo" },
   { label: "Registrar ingreso", href: "/privado/ingresos/nuevo" },
   { label: "Registrar transferencia / retiro", href: "/privado/transferencias/nueva" },
-  { label: "Ajuste manual" },
+  { label: "Ajuste manual", href: "/privado/ajustes/nuevo" },
   { label: "Cuentas", href: "/privado/cuentas" },
   { label: "Configurar categorías", href: "/privado/categorias" },
   { label: "Configuraciones", href: "/privado/configuraciones" },
