@@ -11,6 +11,7 @@ import {
 } from "./service";
 
 const headers = { "Cache-Control": "no-store" };
+const userHeaders = (userId: string) => ({ ...headers, "X-Category-User": userId });
 
 function denied(status: "unauthenticated" | "forbidden") {
   return Response.json(
@@ -36,9 +37,10 @@ export async function categoriesCollectionResponse<T extends PgQueryResultHKT>(
     const access = await getAccess(request.headers);
     if (access.status !== "authorized") return denied(access.status);
     if (request.method === "GET") {
+      const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
       return Response.json(
-        { categories: await listCategories(db, access.userId) },
-        { headers },
+        { categories: await listCategories(db, access.userId, includeArchived), ...(includeArchived ? { userId: access.userId } : {}) },
+        { headers: userHeaders(access.userId) },
       );
     }
     if (request.method === "POST") {
@@ -51,7 +53,7 @@ export async function categoriesCollectionResponse<T extends PgQueryResultHKT>(
       }
       return Response.json(
         await createCategory(db, access.userId, validation.value.name),
-        { status: 201, headers },
+        { status: 201, headers: userHeaders(access.userId) },
       );
     }
     return Response.json(
@@ -77,11 +79,11 @@ export async function categoryResourceResponse<T extends PgQueryResultHKT>(
     if (access.status !== "authorized") return denied(access.status);
     if (request.method === "POST" && new URL(request.url).pathname.endsWith("/archive")) {
       const category = await archiveCategory(db, access.userId, categoryId);
-      return category ? Response.json(category, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+      return category ? Response.json(category, { headers: userHeaders(access.userId) }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     }
     if (request.method === "POST" && new URL(request.url).pathname.endsWith("/unarchive")) {
       const category = await unarchiveCategory(db, access.userId, categoryId);
-      return category ? Response.json(category, { headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+      return category ? Response.json(category, { headers: userHeaders(access.userId) }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     }
     if (request.method !== "PATCH") {
       return Response.json(
@@ -104,7 +106,7 @@ export async function categoryResourceResponse<T extends PgQueryResultHKT>(
     );
     if (!category)
       return Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
-    return Response.json(category, { headers });
+    return Response.json(category, { headers: userHeaders(access.userId) });
   } catch {
     return Response.json(
       { error: "SERVICE_UNAVAILABLE" },

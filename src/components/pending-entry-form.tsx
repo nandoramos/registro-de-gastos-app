@@ -6,6 +6,7 @@ import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import { pendingIssueLabel } from "@/modules/pending-entries/domain";
 import { Button } from "@/components/ui/button";
+import { useCategorySelection } from "@/components/category-selection";
 
 type Entry = {
   id: string;
@@ -21,10 +22,14 @@ export function PendingEntryForm({
   entry,
   accounts,
   categories,
+  categoriesReady = true,
+  onCategoryRejected,
 }: {
   entry: Entry;
   accounts: AccountView[];
   categories: CategoryView[];
+  categoriesReady?: boolean;
+  onCategoryRejected?: () => void;
 }) {
   const initial = entry.interpretation;
   const [operationDate, setOperationDate] = useState(
@@ -42,9 +47,14 @@ export function PendingEntryForm({
   const [expenseId, setExpenseId] = useState<string>();
   const [pending, setPending] = useState(false);
   const account = accounts.find((item) => item.id === accountId);
+  const selection = useCategorySelection(categories, categoryId, categoriesReady);
+  const categoryBlocked = !categoriesReady || selection.invalid;
+  const [error, setError] = useState<string>();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (categoryBlocked) return;
+    setError(undefined);
     setPending(true);
     try {
       const response = await fetch("/api/pending-entries/" + entry.id, {
@@ -62,8 +72,12 @@ export function PendingEntryForm({
         }),
       });
       const body = await response.json();
+      if (body.error === "CATEGORY_NOT_FOUND" || body.issues?.includes("CATEGORY_NOT_FOUND")) { selection.reject(); onCategoryRejected?.(); }
+      if (!response.ok) throw new Error("SAVE_FAILED");
       if (body.status === "registered") setExpenseId(body.expense.id);
       else if (body.issues) setIssues(body.issues);
+    } catch {
+      setError("No pudimos guardar la entrada. Intentá nuevamente.");
     } finally {
       setPending(false);
     }
@@ -139,12 +153,13 @@ export function PendingEntryForm({
         Categoría
         <select
           value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
+          disabled={!categoriesReady}
+          onChange={(event) => { setCategoryId(event.target.value); selection.change(); setError(undefined); }}
           className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
         >
           <option value="">Elegir categoría</option>
-          {categories.map((item) => (
-            <option key={item.id} value={item.id}>
+          {selection.options.map((item) => (
+            <option key={item.id} value={item.id} disabled={selection.disabled(item)}>
               {item.name}
             </option>
           ))}
@@ -168,8 +183,10 @@ export function PendingEntryForm({
           className="mt-2 w-full rounded-xl border px-4 py-3"
         />
       </label>
+      {selection.invalid && <p role="alert">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
+      {error && !selection.invalid && <p role="alert">{error}</p>}
       <div className="sm:col-span-2">
-        <Button disabled={pending}>
+        <Button disabled={pending || categoryBlocked}>
           {pending ? "Guardando…" : "Guardar y registrar"}
         </Button>
       </div>

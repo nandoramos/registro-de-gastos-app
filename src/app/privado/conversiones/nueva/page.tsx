@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
 import { ConversionForm } from "@/components/conversion-form";
-import { listAccounts } from "@/modules/accounts/service";
+import { listAccountOptions } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getQuoteSettings } from "@/modules/settings/service";
@@ -16,7 +16,7 @@ export default async function NewConversionPage() {
   try {
     const db = getAuthRuntime().db;
     [accounts, quoteSettings] = await Promise.all([
-      listAccounts(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
+      listAccountOptions(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
       getQuoteSettings(db, access.userId),
     ]);
   } catch {

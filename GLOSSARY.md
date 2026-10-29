@@ -50,15 +50,15 @@ Entrada identificada como gasto cuya interpretación requiere completarse o corr
 _Evitar_: gasto registrado como sinónimo de gasto pendiente de revisión.
 
 **Transferencia entre cuentas propias**:
-Traslado de dinero entre cuentas de una misma persona, del mismo banco o de bancos distintos. El capital trasladado no constituye por sí mismo un gasto.
+Traslado de dinero entre cuentas distintas de una misma persona cuando ambas usan la misma moneda, sean bancarias o de efectivo. El capital trasladado no constituye por sí mismo un gasto. Si las cuentas usan monedas distintas, la operación también es una conversión de moneda.
 _Evitar_: gasto como sinónimo de transferencia propia.
 
 **Retiro de efectivo**:
-Transferencia de dinero desde una cuenta bancaria del usuario hacia una cuenta de efectivo propia. No constituye un gasto; el gasto se registra cuando se paga desde la cuenta de efectivo.
+Traslado de dinero desde una cuenta bancaria hacia una cuenta de efectivo propia. No constituye un gasto; el gasto se registra cuando se paga desde la cuenta de efectivo. Si las cuentas usan monedas distintas, la operación también es una conversión de moneda.
 _Evitar_: gasto como sinónimo de retiro.
 
 **Conversión de moneda**:
-Intercambio de un importe expresado en una moneda por otro importe expresado en una moneda diferente, por ejemplo de USD a UYU. Puede formar parte de un traslado entre cuentas propias.
+Intercambio entre importes de monedas distintas, por ejemplo de USD a UYU. En un traslado entre cuentas propias se registran los importes de origen y destino, y la operación puede ser además una transferencia o un retiro según las cuentas involucradas.
 _Evitar_: transferencia como único término cuando sea necesario distinguir que hubo un cambio de moneda.
 
 **Tipo de cambio efectivo**:

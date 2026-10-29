@@ -29,3 +29,18 @@ it("suma ingresos por separado y los incluye en el historial sin sumarlos a gast
   expect(summary.incomeTotals).toEqual([{ currency: "UYU", amount: "100.25" }, { currency: "USD", amount: "20.00" }]);
   expect((await listMovementHistory(db, "summary-owner", { month: "2026-10", type: "income" })).map((item) => item.id).sort()).toEqual(["salary-usd", "salary-uyu"]);
 });
+
+it("identifica Casa Nueva por su clave estable aunque esté renombrada y archivada, sin resolver su ID antes", async () => {
+  const { eq } = await import("drizzle-orm");
+  await expense("regular-for-house", "5.00");
+  await expense("house-only", "7.00", "house");
+  await income("income-for-house", "10.00");
+  await db.update(schema.expenseCategory).set({ name: "Obra renombrada", archivedAt: new Date() }).where(eq(schema.expenseCategory.id, "house"));
+  try {
+    expect((await listMovementHistory(db, "summary-owner", { month: "2026-10", houseOnly: true, includeHouse: true })).map(item => item.id)).toEqual(["house-only"]);
+    expect(await listMovementHistory(db, "someone-else", { month: "2026-10", houseOnly: true, includeHouse: true })).toEqual([]);
+    expect(await listMovementHistory(db, "summary-owner", { month: "2026-10", houseOnly: true, includeHouse: true, categoryIds: ["food"] })).toEqual([]);
+  } finally {
+    await db.update(schema.expenseCategory).set({ name: "Casa Nueva", archivedAt: null }).where(eq(schema.expenseCategory.id, "house"));
+  }
+});

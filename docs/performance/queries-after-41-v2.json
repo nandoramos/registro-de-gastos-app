@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-29",
+  "environment": "Local Node.js process querying the configured remote database with pg and a maximum of five pooled connections",
+  "safety": "Read-only connections; only timings and query counts recorded",
+  "scope": "Service calls only, excluding page authorization and browser navigation",
+  "samples": [
+    { "round": 1, "summaryMs": 1165, "summaryQueries": 3, "historyMs": 1201, "historyQueries": 5 },
+    { "round": 2, "summaryMs": 240, "summaryQueries": 3, "historyMs": 157, "historyQueries": 5 },
+    { "round": 3, "summaryMs": 155, "summaryQueries": 3, "historyMs": 160, "historyQueries": 5 }
+  ],
+  "limitations": [
+    "The first invocation of each service expands the pool with additional connections; initial connection costs are not isolated",
+    "Earlier measurements and these samples were not interleaved under identical network conditions",
+    "This is not a measurement of deployed end-to-end navigation"
+  ]
+}

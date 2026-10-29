@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import { expenseWouldOverdraw, type ExpenseDetail } from "@/modules/expenses/domain";
@@ -10,6 +11,7 @@ import {
   useExpenseFields,
 } from "@/components/expense-fields";
 import { Button } from "@/components/ui/button";
+import { useCategorySelection } from "@/components/category-selection";
 
 type EditableExpense = Pick<
   ExpenseDetail,
@@ -29,12 +31,17 @@ export function ExpenseEditForm({
   accounts,
   categories,
   onSaved,
+  categoriesReady = true,
+  onCategoryRejected,
 }: {
   expense: EditableExpense;
   accounts: AccountView[];
   categories: CategoryView[];
   onSaved?: () => void;
+  categoriesReady?: boolean;
+  onCategoryRejected?: () => void;
 }) {
+  const router = useRouter();
   const { fields, selectedAccount, input } = useExpenseFields(
     accounts,
     categories,
@@ -51,6 +58,8 @@ export function ExpenseEditForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
+  const [retainedCategoryId, setRetainedCategoryId] = useState(expense.category.id);
+  const category = useCategorySelection(categories, fields.categoryId.value, categoriesReady, retainedCategoryId);
   const wouldBeNegative = expenseWouldOverdraw(
     selectedAccount?.balance,
     fields.amount.value,
@@ -59,7 +68,7 @@ export function ExpenseEditForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!input) return;
+    if (!input || !category.valid) return;
     setPending(true);
     setError(undefined);
     setSaved(false);
@@ -72,9 +81,11 @@ export function ExpenseEditForm({
       const body = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(body.error);
       setSaved(true);
+      setRetainedCategoryId(fields.categoryId.value);
       onSaved?.();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
+      if (code === "CATEGORY_NOT_FOUND") { category.reject(); onCategoryRejected?.(); }
       setError(
         expenseErrorMessages[code] ??
           "No pudimos guardar los cambios. Intentá nuevamente.",
@@ -91,8 +102,11 @@ export function ExpenseEditForm({
     >
       <ExpenseFields
         accounts={accounts}
-        categories={categories}
+        categories={category.options}
         fields={fields}
+        categoriesReady={categoriesReady}
+        retainedCategoryId={retainedCategoryId}
+        onCategoryChange={() => { category.change(); setError(undefined); }}
       />
       <div className="sm:col-span-2">
         {wouldBeNegative && (
@@ -100,7 +114,8 @@ export function ExpenseEditForm({
             Este cambio dejará la cuenta con saldo negativo. Podés guardarlo de todas formas.
           </p>
         )}
-        <Button disabled={pending || !selectedAccount}>
+        {category.invalid && <p role="alert" className="mb-4 text-sm text-red-800">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
+        <Button disabled={pending || !selectedAccount || !category.valid}>
           {pending ? "Guardando…" : "Guardar cambios"}
         </Button>
         {saved && (
@@ -108,15 +123,16 @@ export function ExpenseEditForm({
             <p>
               Cambios guardados. La evidencia original fue conservada.
             </p>
-            <a
-              href={`/privado/gastos/${expense.id}`}
+            <button
+              type="button"
+              onClick={() => router.refresh()}
               className="mt-2 inline-flex font-semibold underline underline-offset-4"
             >
               Actualizar detalle e historial
-            </a>
+            </button>
           </div>
         )}
-        {error && (
+        {error && !category.invalid && (
           <p role="alert" className="mt-4 text-sm text-red-800">
             {error}
           </p>

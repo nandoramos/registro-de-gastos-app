@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PendingEntryForm } from "@/components/pending-entry-form";
+import { CachedPendingEntryForm, CachedEmailTransferChoiceForm } from "@/components/cached-category-consumers";
 import { TransferForm } from "@/components/transfer-form";
 import { ConversionForm } from "@/components/conversion-form";
-import { EmailTransferChoiceForm } from "@/components/email-transfer-choice-form";
 import { EntryStatusActions } from "@/components/entry-status-actions";
 import { PendingManualDeleteButton } from "@/components/pending-manual-delete-button";
 import { PendingIncomeForm } from "@/components/pending-income-form";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
-import { listAccounts } from "@/modules/accounts/service";
-import { listCategories } from "@/modules/categories/service";
+import { listAccountOptions } from "@/modules/accounts/service";
 import { getQuoteSettings } from "@/modules/settings/service";
 import {
   countPendingEntries,
@@ -25,10 +23,9 @@ export default async function PendingEntryPage({
 }) {
   const access = await requireAuthorizedPage();
   const db = getAuthRuntime().db;
-  const [entry, accounts, categories, pendingCount, quoteSettings] = await Promise.all([
+  const [entry, accounts, pendingCount, quoteSettings] = await Promise.all([
     getPendingEntry(db, access.userId, (await params).id),
-    listAccounts(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
-    listCategories(db, access.userId),
+    listAccountOptions(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
     countPendingEntries(db, access.userId),
     getQuoteSettings(db, access.userId),
   ]);
@@ -43,20 +40,20 @@ export default async function PendingEntryPage({
         {entry.interpretation.entryType === "income" ? (
           <PendingIncomeForm entry={entry} accounts={accounts} />
         ) : entry.interpretation.entryType === "email-transfer-choice" ? (
-          <EmailTransferChoiceForm
+          <CachedEmailTransferChoiceForm
             entryId={entry.id}
             accounts={accounts}
-            categories={categories}
+            userId={access.userId}
           />
         ) : entry.interpretation.entryType === "conversion" ? (
           <ConversionForm entry={entry} accounts={accounts} quoteSettings={quoteSettings} />
         ) : entry.interpretation.entryType === "own-transfer" ? (
           <TransferForm entry={entry} accounts={accounts} />
         ) : (
-          <PendingEntryForm
+          <CachedPendingEntryForm
             entry={entry}
             accounts={accounts}
-            categories={categories}
+            userId={access.userId}
           />
         )}
       </div>

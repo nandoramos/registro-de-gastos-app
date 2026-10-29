@@ -1,4 +1,9 @@
 @import "tailwindcss";
+
+/* Keep the shared menu interactive while a link's destination is pending. */
+.private-content { position: relative; }
+.private-content:has(> .navigation-loading) > :not(.navigation-loading) { visibility: hidden; }
+.navigation-loading { position: absolute; inset: 0; }
 :root {
   color-scheme: light;
   --background: #f6f5f1;

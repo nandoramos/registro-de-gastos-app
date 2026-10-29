@@ -499,4 +499,24 @@ describe("registro manual de gastos", () => {
     );
     expect(response.status).toBe(401);
   });
+
+  it("permite conservar la categoría archivada actual y rechaza otra archivada o ajena al corregir", async () => {
+    const created = await expensesCollectionResponse(request("/api/expenses", "POST", completeExpense), db, ownerAccess);
+    const { id } = await created.json();
+    const before = await expenseResourceResponse(request(`/api/expenses/${id}`), id, db, ownerAccess);
+    const original = (await before.json()).source.original;
+    for (const categoryId of ["owner-category", "owner-health"]) await db.update(schema.expenseCategory).set({ archivedAt: new Date() }).where(eq(schema.expenseCategory.id, categoryId));
+    const retained = await expenseResourceResponse(request(`/api/expenses/${id}`, "PATCH", { ...completeExpense, title: "Corrección sintética" }), id, db, ownerAccess);
+    expect(retained.status).toBe(200);
+    for (const categoryId of ["owner-health", "other-category"]) {
+      const denied = await expenseResourceResponse(request(`/api/expenses/${id}`, "PATCH", { ...completeExpense, categoryId }), id, db, ownerAccess);
+      expect(denied.status).toBe(422);
+      expect(await denied.json()).toEqual({ error: "CATEGORY_NOT_FOUND" });
+    }
+    const after = await expenseResourceResponse(request(`/api/expenses/${id}`), id, db, ownerAccess);
+    const detail = await after.json();
+    expect(detail.category.id).toBe("owner-category");
+    expect(detail.title).toBe("Corrección sintética");
+    expect(detail.source.original).toEqual(original);
+  });
 });

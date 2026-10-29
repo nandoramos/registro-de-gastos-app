@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
+import { ensureInitialCategories } from "@/modules/categories/service";
 import {
   categoriesCollectionResponse,
   categoryResourceResponse,
@@ -43,6 +44,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(schema.expenseCategory);
+  await ensureInitialCategories(db, "owner");
+  await ensureInitialCategories(db, "other");
 });
 
 afterAll(async () => {
@@ -50,7 +53,26 @@ afterAll(async () => {
 });
 
 describe("categorías de gastos", () => {
+  it("lee categorías sin escrituras y devuelve archivadas solo al pedirlas", async () => {
+    const created = await categoriesCollectionResponse(request("/api/categories", "POST", { name: "Archivada sintética" }), db, ownerAccess);
+    const category = await created.json();
+    await categoryResourceResponse(request(`/api/categories/${category.id}/archive`, "POST"), category.id, db, ownerAccess);
+    await database.exec("SET default_transaction_read_only = on");
+    try {
+      const response = await categoriesCollectionResponse(request("/api/categories?includeArchived=true"), db, ownerAccess);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.userId).toBe("owner");
+      expect(body.categories.find((item: { id: string }) => item.id === category.id).archivedAt).toEqual(expect.any(String));
+      const active = await categoriesCollectionResponse(request("/api/categories"), db, ownerAccess);
+      expect((await active.json()).categories.map((item: { id: string }) => item.id)).not.toContain(category.id);
+    } finally {
+      await database.exec("SET default_transaction_read_only = off");
+    }
+  });
   it("inicializa una sola vez las 21 categorías acordadas", async () => {
+    await ensureInitialCategories(db, "owner");
+    await ensureInitialCategories(db, "owner");
     const first = await categoriesCollectionResponse(
       request("/api/categories"),
       db,
@@ -79,7 +101,7 @@ describe("categorías de gastos", () => {
         "Ajuste manual",
       ]),
     );
-    expect(await db.select().from(schema.expenseCategory)).toHaveLength(21);
+    expect(await db.select().from(schema.expenseCategory)).toHaveLength(42);
   });
 
   it("crea categorías propias de un solo nivel", async () => {
@@ -191,11 +213,14 @@ describe("categorías de gastos", () => {
     };
 
     const otherList = await categoriesCollectionResponse(
-      request("/api/categories?user_id=owner"),
+      request("/api/categories?includeArchived=true&user_id=owner"),
       db,
       otherAccess,
     );
-    expect((await otherList.json()).categories).toHaveLength(21);
+    const otherBody = await otherList.json();
+    expect(otherBody.categories).toHaveLength(21);
+    expect(otherBody.userId).toBe("other");
+    expect(otherList.headers.get("X-Category-User")).toBe("other");
     expect(await db.select().from(schema.expenseCategory)).toHaveLength(42);
 
     const attemptedRename = await categoryResourceResponse(

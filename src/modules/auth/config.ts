@@ -5,6 +5,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import * as schema from "@/db/schema";
 import { assertGoogleIdentity } from "./access";
 import { ownsGoogleIdentity, type AuthDatabase } from "./identity-store";
+import { ensureInitialCategories } from "@/modules/categories/service";
 
 export type AuthConfig = {
   baseURL: string;
@@ -89,6 +90,7 @@ export function createAuth<T extends PgQueryResultHKT>(
             ) {
               throw new APIError("FORBIDDEN", { message: "ACCESS_DENIED" });
             }
+            await ensureInitialCategories(db, session.userId);
             return { data: session };
           },
         },

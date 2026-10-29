@@ -27,9 +27,13 @@ type CreatedExpense = {
 export function ExpenseForm({
   accounts,
   categories,
+  categoriesReady = true,
+  onCategoryRejected,
 }: {
   accounts: AccountView[];
   categories: CategoryView[];
+  categoriesReady?: boolean;
+  onCategoryRejected?: () => void;
 }) {
   const router = useRouter();
   const { fields, selectedAccount, input } = useExpenseFields(
@@ -39,6 +43,8 @@ export function ExpenseForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [created, setCreated] = useState<CreatedExpense>();
+  const [rejectedCategoryId, setRejectedCategoryId] = useState<string>();
+  const categoryValid = categoriesReady && categories.some(category => category.id === fields.categoryId.value && !category.archivedAt) && rejectedCategoryId !== fields.categoryId.value;
   const wouldBeNegative = expenseWouldOverdraw(
     selectedAccount?.balance,
     fields.amount.value,
@@ -46,7 +52,7 @@ export function ExpenseForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!input) return;
+    if (!input || !categoryValid) return;
     setPending(true);
     setError(undefined);
     setCreated(undefined);
@@ -72,6 +78,10 @@ export function ExpenseForm({
       router.refresh();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
+      if (code === "CATEGORY_NOT_FOUND") {
+        setRejectedCategoryId(fields.categoryId.value);
+        onCategoryRejected?.();
+      }
       setError(
         expenseErrorMessages[code] ??
           "No pudimos registrar el gasto. Intentá nuevamente.",
@@ -89,8 +99,11 @@ export function ExpenseForm({
       >
         <ExpenseFields
           accounts={accounts}
-          categories={categories}
+          categories={categories.filter(category => !category.archivedAt || category.id === fields.categoryId.value)}
           fields={fields}
+          allowRetainedArchivedCategory={false}
+          categoriesReady={categoriesReady}
+          onCategoryChange={() => { setRejectedCategoryId(undefined); setError(undefined); }}
         />
         <div className="sm:col-span-2">
           {wouldBeNegative && (
@@ -98,11 +111,12 @@ export function ExpenseForm({
               Este gasto dejará la cuenta con saldo negativo. Podés registrarlo de todas formas.
             </p>
           )}
-          <Button disabled={pending || !selectedAccount}>
+          {categoriesReady && fields.categoryId.value && !categoryValid && <p role="alert" className="mb-4 text-sm text-red-800">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
+          <Button disabled={pending || !selectedAccount || !categoryValid}>
             {pending ? "Registrando…" : "Registrar gasto"}
           </Button>
           <SavePendingButton entryType="expense" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, categoryId: fields.categoryId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
-          {error && (
+          {error && !(categoriesReady && fields.categoryId.value && !categoryValid) && (
             <p role="alert" className="mt-4 text-sm text-red-800">
               {error}
             </p>

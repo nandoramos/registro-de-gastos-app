@@ -14,7 +14,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:navigation": "playwright test --config playwright.navigation.config.ts"
   },
   "dependencies": {
     "@neon/config": "^1.9.4",

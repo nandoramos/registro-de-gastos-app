@@ -11,6 +11,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it("conserva el borrador del pendiente al archivar externamente su categoría", async () => {
+  const entry = { id: "pending-cache", interpretation: { title: "Pendiente sintético", categoryId: "category-1", amount: "20.00" }, issues: [] };
+  const categories = [{ id: "category-1", name: "Alimentación", systemKey: "food" as const }];
+  const view = render(<PendingEntryForm entry={entry} accounts={[]} categories={categories} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Nota (opcional)"), "Nota conservada");
+  view.rerender(<PendingEntryForm entry={entry} accounts={[]} categories={[{ ...categories[0], archivedAt: new Date() }]} />);
+  expect((screen.getByLabelText("Nota (opcional)") as HTMLTextAreaElement).value).toBe("Nota conservada");
+  expect((screen.getByRole("button", { name: "Guardar y registrar" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("completa un pendiente y enlaza el gasto registrado", async () => {
   const fetchMock = vi.fn().mockResolvedValue(
     Response.json(

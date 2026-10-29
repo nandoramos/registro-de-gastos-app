@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/modules/auth/client";
 import { Button } from "./ui/button";
+import { useOptionalCategoryCache } from "@/components/category-cache";
 
 export function SignInButton() {
   const [pending, setPending] = useState(false);
@@ -45,6 +46,7 @@ export function SignInButton() {
   );
 }
 export function SignOutButton() {
+  const categoryCache = useOptionalCategoryCache();
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -54,6 +56,7 @@ export function SignOutButton() {
     try {
       const result = await authClient.signOut();
       if (result.error) throw new Error("SIGN_OUT_FAILED");
+      categoryCache?.clear();
       router.replace("/login");
       router.refresh();
     } catch {

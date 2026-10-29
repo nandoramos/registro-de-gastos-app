@@ -114,10 +114,18 @@ export function ExpenseFields({
   fields,
   accounts,
   categories,
+  allowRetainedArchivedCategory = true,
+  categoriesReady = true,
+  retainedCategoryId,
+  onCategoryChange,
 }: {
   fields: ExpenseFieldsState;
   accounts: AccountView[];
   categories: CategoryView[];
+  allowRetainedArchivedCategory?: boolean;
+  categoriesReady?: boolean;
+  retainedCategoryId?: string;
+  onCategoryChange?: () => void;
 }) {
   const selectedAccount = accounts.find(
     (account) => account.id === fields.accountId.value,
@@ -175,13 +183,14 @@ export function ExpenseFields({
         Categoría
         <select
           required
+          disabled={!categoriesReady}
           value={fields.categoryId.value}
-          onChange={(event) => fields.categoryId.set(event.target.value)}
+          onChange={(event) => { fields.categoryId.set(event.target.value); onCategoryChange?.(); }}
           className="mt-2 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-4 focus:border-emerald-800 focus:outline-none"
         >
           <option value="">Elegí una categoría</option>
           {categories.map((category) => (
-            <option key={category.id} value={category.id} disabled={Boolean(category.archivedAt) && category.id !== fields.categoryId.value}>
+            <option key={category.id} value={category.id} disabled={Boolean(category.archivedAt) && (!allowRetainedArchivedCategory || category.id !== (retainedCategoryId ?? fields.categoryId.value))}>
               {category.name}
             </option>
           ))}

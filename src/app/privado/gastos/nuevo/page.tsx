@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ExpenseForm } from "@/components/expense-form";
+import { CachedExpenseForm } from "@/components/cached-category-views";
 import { SignOutButton } from "@/components/auth-buttons";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
-import { listCategories } from "@/modules/categories/service";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +12,8 @@ export default async function NewExpensePage() {
   const access = await requireAuthorizedPage();
 
   let accounts;
-  let categories;
   try {
-    [accounts, categories] = await Promise.all([
-      listAccounts(getAuthRuntime().db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
-      listCategories(getAuthRuntime().db, access.userId),
-    ]);
+    accounts = (await listAccounts(getAuthRuntime().db, access.userId)).filter((item) => item.openingBalance != null);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -52,7 +47,7 @@ export default async function NewExpensePage() {
           </p>
         ) : (
           <div className="mt-10">
-            <ExpenseForm accounts={accounts} categories={categories} />
+            <CachedExpenseForm accounts={accounts} userId={access.userId} />
           </div>
         )}
       </div>

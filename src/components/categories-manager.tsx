@@ -12,12 +12,29 @@ function message(error?: string) {
     : "No pudimos guardar el cambio. Intentá nuevamente.";
 }
 
+async function requestCategory(url: string, options: RequestInit): Promise<CategoryView> {
+  const response = await fetch(url, options);
+  const body = await response.json() as CategoryView & ApiError;
+  if (!response.ok) throw new Error(body.error);
+  return body;
+}
+
 export function CategoriesManager({
   initialCategories,
+  categories: providedCategories,
+  saveCategory = requestCategory,
+  disabled = false,
 }: {
-  initialCategories: CategoryView[];
+  initialCategories?: CategoryView[];
+  categories?: CategoryView[];
+  saveCategory?: typeof requestCategory;
+  disabled?: boolean;
 }) {
-  const [categories, setCategories] = useState(initialCategories);
+  const [localCategories, setCategories] = useState(initialCategories ?? []);
+  const categories = providedCategories ?? localCategories;
+  function accept(category: CategoryView) {
+    if (!providedCategories) setCategories(current => [...current.filter(item => item.id !== category.id), category].sort((a, b) => a.name.localeCompare(b.name, "es")));
+  }
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string>();
   const [editingName, setEditingName] = useState("");
@@ -30,16 +47,12 @@ export function CategoriesManager({
     setPending(true);
     setError(undefined);
     try {
-      const response = await fetch("/api/categories", {
+      const body = await saveCategory("/api/categories", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name }),
       });
-      const body = (await response.json()) as CategoryView & ApiError;
-      if (!response.ok) throw new Error(body.error);
-      setCategories((current) =>
-        [...current, body].sort((a, b) => a.name.localeCompare(b.name, "es")),
-      );
+      accept(body);
       setName("");
     } catch (caught) {
       setError(message(caught instanceof Error ? caught.message : undefined));
@@ -53,18 +66,12 @@ export function CategoriesManager({
     setPending(true);
     setError(undefined);
     try {
-      const response = await fetch(`/api/categories/${category.id}`, {
+      const body = await saveCategory(`/api/categories/${category.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: editingName }),
       });
-      const body = (await response.json()) as CategoryView & ApiError;
-      if (!response.ok) throw new Error(body.error);
-      setCategories((current) =>
-        current
-          .map((item) => (item.id === body.id ? body : item))
-          .sort((a, b) => a.name.localeCompare(b.name, "es")),
-      );
+      accept(body);
       setEditingId(undefined);
       setEditingName("");
     } catch (caught) {
@@ -76,20 +83,16 @@ export function CategoriesManager({
   async function archive(category: CategoryView) {
     setPending(true); setError(undefined);
     try {
-      const response = await fetch(`/api/categories/${category.id}/archive`, { method: "POST" });
-      const archived = await response.json() as CategoryView & ApiError;
-      if (!response.ok) throw new Error(archived.error);
-      setCategories((current) => current.map((item) => item.id === category.id ? archived : item));
+      const archived = await saveCategory(`/api/categories/${category.id}/archive`, { method: "POST" });
+      accept(archived);
     } catch (caught) { setError(message(caught instanceof Error ? caught.message : undefined)); } finally { setPending(false); }
   }
 
   async function unarchive(category: CategoryView) {
     setPending(true); setError(undefined);
     try {
-      const response = await fetch(`/api/categories/${category.id}/unarchive`, { method: "POST" });
-      const restored = await response.json() as CategoryView & ApiError;
-      if (!response.ok) throw new Error(restored.error);
-      setCategories((current) => current.map((item) => item.id === category.id ? restored : item));
+      const restored = await saveCategory(`/api/categories/${category.id}/unarchive`, { method: "POST" });
+      accept(restored);
     } catch (caught) { setError(message(caught instanceof Error ? caught.message : undefined)); } finally { setPending(false); }
   }
 
@@ -133,11 +136,11 @@ export function CategoriesManager({
                     onChange={(event) => setEditingName(event.target.value)}
                   />
                   <div className="flex gap-2">
-                    <Button disabled={pending}>Guardar</Button>
+                    <Button disabled={pending || disabled}>Guardar</Button>
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={pending}
+                      disabled={pending || disabled}
                       onClick={() => setEditingId(undefined)}
                     >
                       Cancelar
@@ -154,7 +157,7 @@ export function CategoriesManager({
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {category.archivedAt ? (
-                      <Button type="button" variant="outline" disabled={pending} aria-label={`Desarchivar ${category.name}`} onClick={() => unarchive(category)} className="min-h-9 rounded-md px-3 py-1 text-xs">
+                      <Button type="button" variant="outline" disabled={pending || disabled} aria-label={`Desarchivar ${category.name}`} onClick={() => unarchive(category)} className="min-h-9 rounded-md px-3 py-1 text-xs">
                         Desarchivar
                       </Button>
                     ) : (
@@ -162,6 +165,7 @@ export function CategoriesManager({
                         <Button
                           type="button"
                           variant="outline"
+                          disabled={pending || disabled}
                           aria-label={`Renombrar ${category.name}`}
                           title={`Renombrar ${category.name}`}
                           className="!min-h-11 !w-11 !px-0 rounded-md"
@@ -173,7 +177,7 @@ export function CategoriesManager({
                         >
                           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 2.651 2.651M4 20l4.5-.9L19.6 8a1.875 1.875 0 0 0-2.65-2.65L5.85 16.45 4 20Z" /></svg>
                         </Button>
-                        <Button type="button" variant="outline" disabled={pending} aria-label={`Archivar ${category.name}`} title={`Archivar ${category.name}`} onClick={() => archive(category)} className="!min-h-11 !w-11 !px-0 rounded-md">
+                        <Button type="button" variant="outline" disabled={pending || disabled} aria-label={`Archivar ${category.name}`} title={`Archivar ${category.name}`} onClick={() => archive(category)} className="!min-h-11 !w-11 !px-0 rounded-md">
                           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4h8v2m3 0-.9 14H5.9L5 6m4 4v6m6-6v6" /></svg>
                         </Button>
                       </>
@@ -206,7 +210,7 @@ export function CategoriesManager({
               onChange={(event) => setName(event.target.value)}
             />
           </label>
-          <Button className="w-full" disabled={pending}>
+          <Button className="w-full" disabled={pending || disabled}>
             {pending ? "Guardando…" : "Agregar categoría"}
           </Button>
         </form>

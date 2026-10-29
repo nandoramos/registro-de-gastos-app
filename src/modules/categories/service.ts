@@ -36,7 +36,6 @@ export async function listCategories<T extends PgQueryResultHKT>(
   db: CategoriesDatabase<T>,
   userId: string, includeArchived = false,
 ): Promise<CategoryView[]> {
-  await ensureInitialCategories(db, userId);
   return db
     .select(categorySelection)
     .from(schema.expenseCategory)

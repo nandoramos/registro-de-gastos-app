@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { IncomeForm } from "@/components/income-form";
 import { SignOutButton } from "@/components/auth-buttons";
-import { listAccounts } from "@/modules/accounts/service";
+import { listAccountOptions } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 
@@ -12,7 +12,7 @@ export default async function NewIncomePage() {
   const access = await requireAuthorizedPage();
   let accounts;
   try {
-    accounts = (await listAccounts(getAuthRuntime().db, access.userId))
+    accounts = (await listAccountOptions(getAuthRuntime().db, access.userId))
       .filter((account) => account.openingBalance != null);
   } catch {
     redirect("/login?error=unavailable");

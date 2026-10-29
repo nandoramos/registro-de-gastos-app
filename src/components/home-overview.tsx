@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import type { CurrencyTotal } from "@/modules/summary/home";
 import { formatMoneyAmount } from "@/modules/money/format";
 
@@ -30,7 +30,7 @@ export function HomeOverview({
               <h2 id="monthly-expenses-heading" className="text-lg font-semibold text-stone-100">Gastos del mes</h2>
               <p className="mt-1 text-sm text-stone-500">Casa Nueva excluida</p>
             </div>
-            <Link href={movementHref} className="min-h-11 rounded-lg border border-emerald-400/30 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/10">
+            <Link loadingTitle="Movimientos" href={movementHref} className="min-h-11 rounded-lg border border-emerald-400/30 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/10">
               Ver movimientos que forman estos gastos
             </Link>
           </div>

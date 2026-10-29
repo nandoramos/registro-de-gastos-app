@@ -5,29 +5,47 @@ import { FormEvent, useState } from "react";
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import { Button } from "@/components/ui/button";
+import { useCategorySelection } from "@/components/category-selection";
 
 export function EmailTransferChoiceForm({
   entryId,
   accounts,
   categories,
+  categoriesReady = true,
+  onCategoryRejected,
 }: {
   entryId: string;
   accounts: AccountView[];
   categories: CategoryView[];
+  categoriesReady?: boolean;
+  onCategoryRejected?: () => void;
 }) {
   const [nature, setNature] = useState<"expense" | "own-transfer">("expense");
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [saved, setSaved] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+  const selection = useCategorySelection(categories, categoryId, categoriesReady);
+  const categoryBlocked = nature === "expense" && (!categoriesReady || selection.invalid);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (categoryBlocked) return;
+    setError(undefined);
+    setPending(true);
+    try {
     const response = await fetch(`/api/pending-entries/${entryId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ nature, accountId, categoryId }),
     });
-    if (response.ok) setSaved(true);
+    const body = await response.json();
+    if (body.error === "CATEGORY_NOT_FOUND" || body.issues?.includes("CATEGORY_NOT_FOUND")) { selection.reject(); onCategoryRejected?.(); }
+    if (!response.ok) throw new Error("SAVE_FAILED");
+    setSaved(true);
+    } catch { setError("No pudimos guardar la entrada. Intentá nuevamente."); }
+    finally { setPending(false); }
   }
 
   if (saved) {
@@ -76,20 +94,23 @@ export function EmailTransferChoiceForm({
           Categoría
           <select
             value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
+            disabled={!categoriesReady}
+          onChange={(event) => { setCategoryId(event.target.value); selection.change(); setError(undefined); }}
             className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
           >
             <option value="">Elegir categoría</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
+            {selection.options.map((category) => (
+              <option key={category.id} value={category.id} disabled={selection.disabled(category)}>
                 {category.name}
               </option>
             ))}
           </select>
         </label>
       )}
+      {nature === "expense" && selection.invalid && <p role="alert">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
+      {error && !selection.invalid && <p role="alert">{error}</p>}
       <div className="sm:col-span-2">
-        <Button>Guardar naturaleza</Button>
+        <Button disabled={pending || categoryBlocked}>Guardar naturaleza</Button>
       </div>
     </form>
   );

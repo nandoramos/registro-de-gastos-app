@@ -126,6 +126,7 @@ async function callback(
       users: await db.select().from(schema.user),
       sessions: await db.select().from(schema.session),
       accounts: await db.select().from(schema.account),
+      categories: await db.select().from(schema.expenseCategory),
     };
   } finally {
     await database.close();
@@ -143,6 +144,8 @@ describe("callback Google con identidad sintética firmada", () => {
     expect(result.sessions).toHaveLength(1);
     expect(result.accounts).toHaveLength(1);
     expect(result.accounts[0].accountId).toBe("google-owner");
+    expect(result.categories).toHaveLength(21);
+    expect(result.categories.every(category => category.userId === result.users[0].id)).toBe(true);
   });
   it.each([
     { sub: "google-other", verified: true },

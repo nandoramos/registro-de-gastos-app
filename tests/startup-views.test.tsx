@@ -4,6 +4,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { eq } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 const mockedRuntime = vi.hoisted(() => ({ db: undefined as unknown }));
@@ -14,6 +15,7 @@ vi.mock("@/modules/auth/server", () => ({
   getAuthRuntime: () => ({ db: mockedRuntime.db }),
 }));
 vi.mock("next/link", () => ({
+  useLinkStatus: () => ({ pending: false }),
   default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a>,
 }));
 vi.mock("next/navigation", () => ({
@@ -22,6 +24,7 @@ vi.mock("next/navigation", () => ({
 
 import PrivateHome from "@/app/privado/page";
 import HistoryPage from "@/app/privado/historial/page";
+import { CategoryCacheProvider } from "@/components/category-cache";
 
 const database = new PGlite();
 const db = drizzle(database, { schema });
@@ -33,7 +36,7 @@ const today = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 }).format(new Date());
 const month = today.slice(0, 7);
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 beforeAll(async () => {
   mockedRuntime.db = db;
@@ -78,7 +81,8 @@ it.each([["escritorio", 1440], ["móvil", 390]] as const)("recorre Inicio y el d
   const history = await HistoryPage({
     searchParams: Promise.resolve({ month, type: ["expense", "adjustment"], spending: "true" }),
   });
-  render(history);
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ userId, categories: await db.select({ id: schema.expenseCategory.id, name: schema.expenseCategory.name, systemKey: schema.expenseCategory.systemKey, archivedAt: schema.expenseCategory.archivedAt }).from(schema.expenseCategory).where(eq(schema.expenseCategory.userId, userId)) })));
+  render(<CategoryCacheProvider>{history}</CategoryCacheProvider>);
   const main = within(screen.getByRole("main"));
   expect(main.getByText("Compra ficticia")).toBeTruthy();
   expect(main.getByText("Ajuste ficticio negativo")).toBeTruthy();

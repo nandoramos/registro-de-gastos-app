@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { NavigationLink as Link } from "@/components/navigation-link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { SignOutButton } from "@/components/auth-buttons";
@@ -31,11 +31,11 @@ function Menu({ name, close }: { name: string; close?: () => void }) {
     <Link href="/privado" onClick={close} className="private-brand">Registro de Gastos</Link>
     <p className="private-nav-heading">Tu espacio</p>
     <ul className="private-nav-list">
-      {primary.map((item) => <li key={item.label}>{item.href ? <Link className="private-nav-link" href={item.href} onClick={close} aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link> : <span className="private-nav-unavailable">{item.label}<span>Próximamente</span></span>}</li>)}
+      {primary.map((item) => <li key={item.label}>{item.href ? <Link loadingTitle={item.label} className="private-nav-link" href={item.href} onClick={close} aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link> : <span className="private-nav-unavailable">{item.label}<span>Próximamente</span></span>}</li>)}
     </ul>
     <p className="private-nav-heading">Herramientas actuales</p>
     <ul className="private-nav-list">
-      {existing.map((item) => <li key={item.href}><Link className="private-nav-link" href={item.href} onClick={close} aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link></li>)}
+      {existing.map((item) => <li key={item.href}><Link loadingTitle={item.label} className="private-nav-link" href={item.href} onClick={close} aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link></li>)}
     </ul>
     <div className="private-signout"><SignOutButton /></div>
   </nav>;

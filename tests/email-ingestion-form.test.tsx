@@ -17,6 +17,17 @@ const categories = [
   { id: "food", name: "Alimentación", systemKey: "food" as const },
 ];
 
+it("conserva texto y selección si la categoría elegida se archiva durante una actualización", async () => {
+  const user = userEvent.setup();
+  const view = render(<EmailIngestionForm accounts={accounts} categories={categories} />);
+  await user.type(screen.getByLabelText("Texto del email"), "Texto sintético conservado");
+  await user.selectOptions(screen.getByLabelText("Categoría"), "food");
+  view.rerender(<EmailIngestionForm accounts={accounts} categories={[{ ...categories[0], archivedAt: new Date() }]} />);
+  expect((screen.getByLabelText("Texto del email") as HTMLTextAreaElement).value).toBe("Texto sintético conservado");
+  expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("food");
+  expect((screen.getByRole("button", { name: "Ingresar al registro" }) as HTMLButtonElement).disabled).toBe(true);
+});
+
 it("envía una compra interpretada con la selección manual y enlaza el gasto", async () => {
   const fetchMock = vi
     .fn()

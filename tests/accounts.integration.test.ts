@@ -7,6 +7,7 @@ import {
   accountsCollectionResponse,
   accountResourceResponse,
 } from "@/modules/accounts/http";
+import { listAccountOptions, listAccounts } from "@/modules/accounts/service";
 
 const database = new PGlite();
 const db = drizzle(database, { schema });
@@ -51,6 +52,24 @@ afterAll(async () => {
 });
 
 describe("cuentas propias", () => {
+  it("lista opciones autorizadas sin calcular saldos y conserva configuración y filtro de archivadas", async () => {
+    await db.insert(schema.financialAccount).values([
+      { id: "option-active", userId: "owner", name: "Activa", kind: "cash", currency: "UYU", openingBalance: "50.00", openingDate: "2026-01-01" },
+      { id: "option-archived", userId: "owner", name: "Archivada", kind: "bank", currency: "USD", openingBalance: "25.00", openingDate: "2026-02-01", archivedAt: new Date("2026-03-01T00:00:00Z") },
+      { id: "option-other", userId: "other", name: "Otra persona", kind: "bank", currency: "UYU", openingBalance: "10.00", openingDate: "2026-01-01" },
+    ]);
+
+    const active = await listAccountOptions(db, "owner");
+    expect(active).toEqual([expect.objectContaining({ id: "option-active", currency: "UYU", openingBalance: "50.00", openingDate: "2026-01-01" })]);
+    expect(active[0]).not.toHaveProperty("balance");
+    const all = await listAccountOptions(db, "owner", true);
+    expect(all.map((account) => account.id)).toEqual(["option-active", "option-archived"]);
+    expect(all.every((account) => !Object.hasOwn(account, "balance"))).toBe(true);
+
+    const calculated = await listAccounts(db, "owner", true);
+    expect(calculated.find((account) => account.id === "option-active")?.balance).toBe("50.00");
+  });
+
   it("crea y lista cuentas bancarias y de efectivo en UYU o USD", async () => {
     for (const input of [
       { name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "0", openingDate: "2026-01-01" },

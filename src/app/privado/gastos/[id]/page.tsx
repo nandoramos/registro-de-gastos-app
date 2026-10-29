@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
-import { ExpenseEditForm } from "@/components/expense-edit-form";
-import { ExpenseRevisionList } from "@/components/expense-revision-list";
+import { CachedExpenseEditor, CachedCategoryName } from "@/components/cached-category-consumers";
 import { MovementStatusActions } from "@/components/movement-status-actions";
 import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
-import { listCategories } from "@/modules/categories/service";
 import { getExpenseDetail } from "@/modules/expenses/service";
 import { formatMoneyAmount } from "@/modules/money/format";
 
@@ -22,12 +20,10 @@ export default async function ExpenseDetailPage({
 
   let expense;
   let accounts;
-  let categories;
   try {
-    [expense, accounts, categories] = await Promise.all([
+    [expense, accounts] = await Promise.all([
       getExpenseDetail(getAuthRuntime().db, access.userId, (await params).id),
       listAccounts(getAuthRuntime().db, access.userId, true),
-      listCategories(getAuthRuntime().db, access.userId, true),
     ]);
   } catch {
     redirect("/login?error=unavailable");
@@ -86,7 +82,7 @@ export default async function ExpenseDetailPage({
             <dt className="text-xs uppercase tracking-wide text-stone-500">
               Categoría
             </dt>
-            <dd className="mt-1 font-medium">{expense.category.name}</dd>
+            <dd className="mt-1 font-medium"><CachedCategoryName userId={access.userId} category={expense.category} /></dd>
           </div>
           {expense.note && (
             <div className="sm:col-span-2">
@@ -98,28 +94,7 @@ export default async function ExpenseDetailPage({
           )}
         </dl>
 
-        {!expense.voidedAt && (
-          <section className="mt-8">
-            <h2 className="text-xl font-semibold">Corregir gasto</h2>
-            <p className="mt-2 text-sm leading-6 text-stone-600">
-              Los cambios válidos se aplican al gasto. La evidencia original no se modifica.
-            </p>
-            <ExpenseEditForm
-              expense={expense}
-              accounts={accounts}
-              categories={categories}
-            />
-          </section>
-        )}
-
-        <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold">Historial de correcciones</h2>
-          <ExpenseRevisionList
-            history={expense.history}
-            accounts={accounts}
-            categories={categories}
-          />
-        </section>
+        <CachedExpenseEditor userId={access.userId} expense={expense} accounts={accounts} />
 
         <section className="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-6">
           <h2 className="text-xl font-semibold">Evidencia y procedencia</h2>

@@ -5,9 +5,13 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ExpenseEditForm } from "@/components/expense-edit-form";
 
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 const accounts = [
@@ -39,6 +43,20 @@ const expense = {
 };
 
 describe("edición de gastos", () => {
+  it("conserva una categoría archivada confirmada pero bloquea otra que se archive mientras se edita", async () => {
+    const user = userEvent.setup();
+    const originalArchived = [{ ...categories[0], archivedAt: new Date() }, categories[1]];
+    const view = render(<ExpenseEditForm expense={expense} accounts={accounts} categories={originalArchived} />);
+    expect((screen.getByRole("button", { name: "Guardar cambios" }) as HTMLButtonElement).disabled).toBe(false);
+    await user.selectOptions(screen.getByLabelText("Categoría"), "health");
+    await user.clear(screen.getByLabelText("Título"));
+    await user.type(screen.getByLabelText("Título"), "Borrador de edición");
+    view.rerender(<ExpenseEditForm expense={expense} accounts={accounts} categories={originalArchived.map(category => ({ ...category, archivedAt: new Date() }))} />);
+    expect((screen.getByRole("button", { name: "Guardar cambios" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Borrador de edición");
+    await user.selectOptions(screen.getByLabelText("Categoría"), "food");
+    expect((screen.getByRole("button", { name: "Guardar cambios" }) as HTMLButtonElement).disabled).toBe(false);
+  });
   it("advierte si la corrección dejará saldo negativo", async () => {
     const user = userEvent.setup();
     render(<ExpenseEditForm expense={expense} accounts={[{ ...accounts[0], balance: "10.00" }]} categories={categories} />);
@@ -90,6 +108,8 @@ describe("edición de gastos", () => {
         }),
       }),
     );
+    await user.click(screen.getByRole("button", { name: "Actualizar detalle e historial" }));
+    expect(refresh).toHaveBeenCalledOnce();
   });
 
   it("explica una corrección inválida y conserva lo escrito", async () => {

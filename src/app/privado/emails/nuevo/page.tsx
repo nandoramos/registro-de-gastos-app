@@ -1,23 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/auth-buttons";
-import { EmailIngestionForm } from "@/components/email-ingestion-form";
-import { listAccounts } from "@/modules/accounts/service";
+import { CachedEmailIngestionForm } from "@/components/cached-category-consumers";
+import { listAccountOptions } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
-import { listCategories } from "@/modules/categories/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewEmailEntryPage() {
   const access = await requireAuthorizedPage();
   let accounts;
-  let categories;
   try {
-    [accounts, categories] = await Promise.all([
-      listAccounts(getAuthRuntime().db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
-      listCategories(getAuthRuntime().db, access.userId),
-    ]);
+    accounts = (await listAccountOptions(getAuthRuntime().db, access.userId)).filter(item => item.openingBalance != null);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -42,7 +37,7 @@ export default async function NewEmailEntryPage() {
           quedan pendientes.
         </p>
         <div className="mt-10">
-          <EmailIngestionForm accounts={accounts} categories={categories} />
+          <CachedEmailIngestionForm accounts={accounts} userId={access.userId} />
         </div>
       </div>
     </main>

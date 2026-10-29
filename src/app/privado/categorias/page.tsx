@@ -1,22 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { CategoriesManager } from "@/components/categories-manager";
+import { CachedCategoriesManager } from "@/components/cached-category-views";
 import { SignOutButton } from "@/components/auth-buttons";
 import { requireAuthorizedPage } from "@/modules/auth/page";
-import { getAuthRuntime } from "@/modules/auth/server";
-import { listCategories } from "@/modules/categories/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
   const access = await requireAuthorizedPage();
-
-  let categories;
-  try {
-    categories = await listCategories(getAuthRuntime().db, access.userId, true);
-  } catch {
-    redirect("/login?error=unavailable");
-  }
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl px-6 py-8 sm:px-12 sm:py-12">
@@ -38,7 +28,7 @@ export default async function CategoriesPage() {
           reflejen tu vida cotidiana.
         </p>
         <div className="mt-10">
-          <CategoriesManager initialCategories={categories} />
+          <CachedCategoriesManager userId={access.userId} />
         </div>
       </div>
     </main>

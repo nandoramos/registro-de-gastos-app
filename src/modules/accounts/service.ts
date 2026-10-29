@@ -50,6 +50,19 @@ export async function listAccounts<T extends PgQueryResultHKT>(
     .orderBy(asc(schema.financialAccount.name));
 }
 
+/** Account data for selectors that need identity and opening configuration, not a live balance. */
+export async function listAccountOptions<T extends PgQueryResultHKT>(
+  db: AccountsDatabase<T>,
+  userId: string,
+  includeArchived = false,
+): Promise<AccountView[]> {
+  return db
+    .select(accountSelection)
+    .from(schema.financialAccount)
+    .where(and(eq(schema.financialAccount.userId, userId), ...(includeArchived ? [] : [isNull(schema.financialAccount.archivedAt)])))
+    .orderBy(asc(schema.financialAccount.name));
+}
+
 export async function archiveAccount<T extends PgQueryResultHKT>(db: AccountsDatabase<T>, userId: string, accountId: string) {
   const [account] = await db.update(schema.financialAccount).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(schema.financialAccount.id, accountId), eq(schema.financialAccount.userId, userId), isNull(schema.financialAccount.archivedAt))).returning(accountSelection); return account;
 }

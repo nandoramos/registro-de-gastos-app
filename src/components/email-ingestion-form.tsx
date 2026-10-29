@@ -9,15 +9,20 @@ import {
   parseItauEmailText,
 } from "@/modules/email-import/itau-parser";
 import { Button } from "@/components/ui/button";
+import { useCategorySelection } from "@/components/category-selection";
 import { pendingIssueLabel } from "@/modules/pending-entries/domain";
 import { suggestAccountFromCurrency } from "@/modules/email-import/account-assignment";
 
 export function EmailIngestionForm({
   accounts,
   categories,
+  categoriesReady = true,
+  onCategoryRejected,
 }: {
   accounts: AccountView[];
   categories: CategoryView[];
+  categoriesReady?: boolean;
+  onCategoryRejected?: () => void;
 }) {
   const [text, setText] = useState("");
   const [manualAccountId, setManualAccountId] = useState<string>();
@@ -36,9 +41,14 @@ export function EmailIngestionForm({
     accountSuggestion.status === "assigned" ? accountSuggestion.account.id : "";
   const accountId = manualAccountId ?? suggestedAccountId;
   const selectedNature = parsed.kind === "expense" ? "expense" : nature;
+  const selection = useCategorySelection(categories, categoryId, categoriesReady);
+  const categoryBlocked = selectedNature !== "own-transfer" && (!categoriesReady || selection.invalid);
+  const [error, setError] = useState<string>();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (categoryBlocked) return;
+    setError(undefined);
     setPending(true);
     try {
       const response = await fetch("/api/email-entries", {
@@ -52,11 +62,15 @@ export function EmailIngestionForm({
         }),
       });
       const body = await response.json();
+      if (body.error === "CATEGORY_NOT_FOUND" || body.issues?.includes("CATEGORY_NOT_FOUND")) { selection.reject(); onCategoryRejected?.(); }
+      if (!response.ok) throw new Error("SAVE_FAILED");
       if (response.status === 201 && body.id) setExpenseId(body.id);
       else if (body.id) {
         setPendingId(body.id);
         setIssues(body.issues ?? []);
       }
+    } catch {
+      setError("No pudimos guardar la entrada. Intentá nuevamente.");
     } finally {
       setPending(false);
     }
@@ -168,22 +182,25 @@ export function EmailIngestionForm({
           Categoría
           <select
             value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
+            disabled={!categoriesReady}
+          onChange={(event) => { setCategoryId(event.target.value); selection.change(); setError(undefined); }}
             className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
           >
             <option value="">Elegir categoría</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
+            {selection.options.map((category) => (
+              <option key={category.id} value={category.id} disabled={selection.disabled(category)}>
                 {category.name}
               </option>
             ))}
           </select>
         </label>
       )}
+      {selectedNature !== "own-transfer" && selection.invalid && <p role="alert">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
+      {error && !selection.invalid && <p role="alert">{error}</p>}
       <div className="sm:col-span-2">
         <Button
           disabled={
-            pending ||
+            pending || categoryBlocked ||
             !text.trim() ||
             (parsed.kind === "bank-transfer" && !nature)
           }

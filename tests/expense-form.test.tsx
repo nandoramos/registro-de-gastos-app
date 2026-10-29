@@ -37,6 +37,19 @@ const categories = [
 ];
 
 describe("formulario de gasto manual", () => {
+  it("conserva los campos al actualizar categorías y bloquea una selección archivada", async () => {
+    const user = userEvent.setup();
+    const view = render(<ExpenseForm accounts={accounts} categories={categories} />);
+    await user.type(screen.getByLabelText("Título"), "Borrador sintético");
+    await user.type(screen.getByLabelText("Importe"), "12.34");
+    await user.selectOptions(screen.getByLabelText("Categoría"), "food");
+    view.rerender(<ExpenseForm accounts={accounts} categories={[{ ...categories[0], name: "Comida actualizada", archivedAt: new Date() }]} />);
+    expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Borrador sintético");
+    expect((screen.getByLabelText("Importe") as HTMLInputElement).value).toBe("12.34");
+    expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("food");
+    expect((screen.getByRole("button", { name: "Registrar gasto" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("alert").textContent).toContain("Elegí otra categoría");
+  });
   it("prepara fecha y hora actuales en la zona horaria de Montevideo", () => {
     expect(currentExpenseDateTime()).toMatchObject({
       operationDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
