@@ -5,13 +5,14 @@ import { useState } from "react";
 import type { MovementType } from "@/modules/movements/status";
 import { Button } from "@/components/ui/button";
 
-export function MovementStatusActions({ type, id, voided }: { type: MovementType; id: string; voided: boolean }) {
+export function MovementStatusActions({ type, id, voided, onChanged }: { type: MovementType; id: string; voided: boolean; onChanged?: (action: "void" | "restore") => void }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [completedAction, setCompletedAction] = useState<"void" | "restore">();
   const [error, setError] = useState("");
   const action = voided ? "restore" : "void";
   async function change() {
+    if (action === "void" && !window.confirm("¿Anular este movimiento? Dejará de participar en los saldos y totales.")) return;
     setBusy(true);
     setError("");
     try {
@@ -21,6 +22,7 @@ export function MovementStatusActions({ type, id, voided }: { type: MovementType
         throw new Error(body.error);
       }
       setCompletedAction(action);
+      onChanged?.(action);
       router.refresh();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";

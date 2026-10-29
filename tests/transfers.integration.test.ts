@@ -229,6 +229,7 @@ describe("transferencias propias y retiros", () => {
     const withdrawalRows = await listMovementHistory(db, "transfer-owner", { month: "2026-10", type: "withdrawal" });
     const transferRows = await listMovementHistory(db, "transfer-owner", { month: "2026-10", type: "transfer" });
     expect(withdrawalRows.map((row) => row.type)).toEqual(["withdrawal"]);
+    expect(withdrawalRows[0]).toEqual(expect.objectContaining({ source: expect.objectContaining({ accountId: "owner-bank-a", amount: "1500.25", currency: "UYU" }), destination: expect.objectContaining({ accountId: "owner-cash", amount: "1500.25", currency: "UYU" }) }));
     expect(transfer.status).toBe(201);
     expect(transferRows.map((row) => row.type)).toEqual(["transfer"]);
   });

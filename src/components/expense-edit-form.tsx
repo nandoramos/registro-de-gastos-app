@@ -28,10 +28,12 @@ export function ExpenseEditForm({
   expense,
   accounts,
   categories,
+  onSaved,
 }: {
   expense: EditableExpense;
   accounts: AccountView[];
   categories: CategoryView[];
+  onSaved?: () => void;
 }) {
   const { fields, selectedAccount, input } = useExpenseFields(
     accounts,
@@ -70,6 +72,7 @@ export function ExpenseEditForm({
       const body = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(body.error);
       setSaved(true);
+      onSaved?.();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
       setError(

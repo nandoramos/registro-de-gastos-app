@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
+import { listAccounts } from "@/modules/accounts/service";
 import { pendingEntryResourceResponse } from "@/modules/pending-entries/http";
 import {
   conversionResourceResponse,
@@ -118,6 +119,17 @@ describe("conversiones USD y UYU", () => {
     );
     expect(await db.select().from(schema.expense)).toHaveLength(0);
     expect(await db.select().from(schema.ownTransfer)).toHaveLength(0);
+  });
+
+  it("permite editar la conversión desde el popup y recalcula el tipo efectivo", async () => {
+    const created = await conversionsCollectionResponse(request("/api/conversions", "POST", completeConversion), db, ownerAccess);
+    const conversion = await created.json();
+    const response = await conversionResourceResponse(request(`/api/conversions/${conversion.id}`, "PATCH", { operationDate: "2026-10-26", title: "Cambio editado", note: "Corregido", sourceAccountId: "owner-usd", destinationAccountId: "owner-uyu", sourceAmount: "12.50", destinationAmount: "510.00", institutionKind: "prex", institutionName: "" }), conversion.id, db, ownerAccess);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(expect.objectContaining({ title: "Cambio editado", operationDate: "2026-10-26", effectiveRate: "40.800000000000", source: expect.objectContaining({ amount: "12.50" }), destination: expect.objectContaining({ amount: "510.00" }), institution: { kind: "prex", name: "Prex" } }));
+    const balances = await listAccounts(db, "conversion-owner");
+    expect(balances.find((account) => account.id === "owner-usd")?.balance).toBe("-12.50");
+    expect(balances.find((account) => account.id === "owner-uyu")?.balance).toBe("510.00");
   });
 
   it("mantiene pendiente el destino sin confirmar y permite completarlo", async () => {

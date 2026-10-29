@@ -19,6 +19,40 @@ export type ConversionInput = {
   institutionName: string | null;
 };
 
+export type ConversionUpdateInput = {
+  operationDate: string;
+  title: string;
+  note: string | null;
+  sourceAccountId: string;
+  destinationAccountId: string;
+  sourceAmount: string;
+  destinationAmount: string;
+  institutionKind: ConversionInstitutionKind | null;
+  institutionName: string | null;
+};
+
+export function adaptConversionUpdate(input: unknown) {
+  if (typeof input !== "object" || input === null) return { ok: false as const, error: "INVALID_INPUT" as const };
+  const value = input as Record<string, unknown>;
+  const operationDate = value.operationDate;
+  const title = typeof value.title === "string" ? value.title.trim() : "";
+  const note = typeof value.note === "string" ? value.note.trim() : "";
+  const sourceAccountId = typeof value.sourceAccountId === "string" ? value.sourceAccountId : "";
+  const destinationAccountId = typeof value.destinationAccountId === "string" ? value.destinationAccountId : "";
+  const sourceAmount = normalizeMoneyAmount(value.sourceAmount);
+  const destinationAmount = normalizeMoneyAmount(value.destinationAmount);
+  const institutionKind = value.institutionKind === "itau" || value.institutionKind === "prex" || value.institutionKind === "other" ? value.institutionKind : value.institutionKind === null || value.institutionKind === "" ? null : undefined;
+  const institutionName = typeof value.institutionName === "string" ? value.institutionName.trim() : "";
+  if (!validOperationDate(operationDate)) return { ok: false as const, error: "INVALID_DATE" as const };
+  if (!title || title.length > 120) return { ok: false as const, error: "INVALID_TITLE" as const };
+  if (note.length > 1000) return { ok: false as const, error: "INVALID_NOTE" as const };
+  if (!sourceAccountId || !destinationAccountId || sourceAccountId === destinationAccountId) return { ok: false as const, error: "INVALID_ACCOUNTS" as const };
+  if (!sourceAmount || !destinationAmount) return { ok: false as const, error: "INVALID_AMOUNT" as const };
+  if (institutionKind === undefined) return { ok: false as const, error: "INVALID_INSTITUTION" as const };
+  if (institutionKind === "other" && !institutionName || institutionName.length > 120) return { ok: false as const, error: "INVALID_INSTITUTION_NAME" as const };
+  return { ok: true as const, value: { operationDate, title, note: note || null, sourceAccountId, destinationAccountId, sourceAmount, destinationAmount, institutionKind, institutionName: institutionKind === "itau" ? "Itaú" : institutionKind === "prex" ? "Prex" : institutionKind === "other" ? institutionName : null } satisfies ConversionUpdateInput };
+}
+
 export type ConversionDetail = Omit<
   ConversionInput,
   | "sourceAccountId"

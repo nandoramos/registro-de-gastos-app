@@ -1,11 +1,13 @@
-import { and, eq, isNull, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, lte, or } from "drizzle-orm";
 import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "@/db/schema";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
 import {
   displayEffectiveRate,
+  calculateEffectiveRate,
   type ConversionDetail,
   type ConversionInput,
+  type ConversionUpdateInput,
 } from "./domain";
 
 type ReferenceError =
@@ -160,4 +162,27 @@ export async function registerManualConversion<T extends PgQueryResultHKT>(
   const conversion = await getConversionDetail(db, userId, conversionId);
   if (!conversion) throw new Error("Registered conversion is unavailable");
   return { ok: true as const, conversion };
+}
+
+export async function updateManualConversion<T extends PgQueryResultHKT>(db: ExpensesDatabase<T>, userId: string, conversionId: string, input: ConversionUpdateInput) {
+  const [current] = await db.select({ sourceAccountId: schema.currencyConversion.sourceAccountId, destinationAccountId: schema.currencyConversion.destinationAccountId, voidedAt: schema.currencyConversion.voidedAt }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.id, conversionId), eq(schema.currencyConversion.userId, userId)));
+  if (!current) return { ok: false as const, error: "NOT_FOUND" as const };
+  if (current.voidedAt) return { ok: false as const, error: "MOVEMENT_VOIDED" as const };
+  const accounts = await db.select({ id: schema.financialAccount.id, currency: schema.financialAccount.currency, openingBalance: schema.financialAccount.openingBalance, openingDate: schema.financialAccount.openingDate, archivedAt: schema.financialAccount.archivedAt }).from(schema.financialAccount).where(and(eq(schema.financialAccount.userId, userId), or(isNull(schema.financialAccount.archivedAt), eq(schema.financialAccount.id, current.sourceAccountId), eq(schema.financialAccount.id, current.destinationAccountId)), or(eq(schema.financialAccount.id, input.sourceAccountId), eq(schema.financialAccount.id, input.destinationAccountId))));
+  const source = accounts.find((account) => account.id === input.sourceAccountId);
+  const destination = accounts.find((account) => account.id === input.destinationAccountId);
+  if (!source || !destination || source.openingBalance == null || destination.openingBalance == null || !source.openingDate || !destination.openingDate || input.operationDate < source.openingDate || input.operationDate < destination.openingDate) return { ok: false as const, error: "ACCOUNT_NOT_AVAILABLE" as const };
+  if (source.currency === destination.currency) return { ok: false as const, error: "SAME_CURRENCY" as const };
+  const effectiveRate = calculateEffectiveRate(source.currency, input.sourceAmount, destination.currency, input.destinationAmount);
+  const updated = await db.transaction(async (transaction) => {
+    const [locked] = await transaction.select({ voidedAt: schema.currencyConversion.voidedAt }).from(schema.currencyConversion).where(and(eq(schema.currencyConversion.id, conversionId), eq(schema.currencyConversion.userId, userId))).for("update");
+    if (!locked) return "missing" as const;
+    if (locked.voidedAt) return "voided" as const;
+    await transaction.update(schema.currencyConversion).set({ ...input, sourceCurrency: source.currency, destinationCurrency: destination.currency, effectiveRate }).where(and(eq(schema.currencyConversion.id, conversionId), eq(schema.currencyConversion.userId, userId), isNull(schema.currencyConversion.voidedAt)));
+    return "updated" as const;
+  });
+  if (updated === "missing") return { ok: false as const, error: "NOT_FOUND" as const };
+  if (updated === "voided") return { ok: false as const, error: "MOVEMENT_VOIDED" as const };
+  const conversion = await getConversionDetail(db, userId, conversionId);
+  return conversion ? { ok: true as const, conversion } : { ok: false as const, error: "NOT_FOUND" as const };
 }

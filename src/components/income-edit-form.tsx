@@ -8,7 +8,7 @@ import { IncomeFields, incomeErrorMessages, useIncomeFields } from "@/components
 
 type EditableIncome = Pick<IncomeDetail, "id" | "operationDate" | "operationTime" | "title" | "note" | "amount" | "currency" | "accountId">;
 
-export function IncomeEditForm({ income, accounts }: { income: EditableIncome; accounts: AccountView[] }) {
+export function IncomeEditForm({ income, accounts, onSaved }: { income: EditableIncome; accounts: AccountView[]; onSaved?: () => void }) {
   const { fields, selectedAccount, input } = useIncomeFields(accounts, {
     operationDate: income.operationDate,
     operationTime: income.operationTime?.slice(0, 5) ?? "",
@@ -37,6 +37,7 @@ export function IncomeEditForm({ income, accounts }: { income: EditableIncome; a
       const body = await response.json() as { error?: string };
       if (!response.ok) throw new Error(body.error);
       setSaved(true);
+      onSaved?.();
     } catch (caught) {
       const code = caught instanceof Error ? caught.message : "";
       setError(incomeErrorMessages[code] ?? "No pudimos guardar los cambios. Intentá nuevamente.");

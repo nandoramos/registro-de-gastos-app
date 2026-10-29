@@ -55,10 +55,12 @@ export function TransferForm({
   accounts,
   entry,
   transfer,
+  onSaved,
 }: {
   accounts: AccountView[];
   entry?: PendingTransfer;
   transfer?: TransferDetail;
+  onSaved?: () => void;
 }) {
   const router = useRouter();
   const initial = entry?.interpretation ?? {};
@@ -152,6 +154,7 @@ export function TransferForm({
       if (savedTransfer?.id) {
         if (existing) {
           setSaved(true);
+          onSaved?.();
           router.refresh();
         }
         else setRegisteredId(savedTransfer.id);
