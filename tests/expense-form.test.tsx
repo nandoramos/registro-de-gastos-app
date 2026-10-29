@@ -58,6 +58,7 @@ describe("formulario de gasto manual", () => {
     expect((screen.getByLabelText("Fecha") as HTMLInputElement).value).not.toBe("");
     expect((screen.getByLabelText("Hora (opcional)") as HTMLInputElement).value).not.toBe("");
     expect((screen.getByLabelText("Categoría") as HTMLSelectElement).value).toBe("");
+    expect(screen.getByRole("button", { name: "Guardar pendiente" })).toBeTruthy();
   });
 
   it("advierte el saldo negativo con formatos de miles inequívocos", async () => {

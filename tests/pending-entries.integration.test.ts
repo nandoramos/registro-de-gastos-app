@@ -43,6 +43,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(schema.expense);
+  await db.delete(schema.income);
   await db.delete(schema.sourceEvent);
   await db.delete(schema.expenseCategory);
   await db.delete(schema.financialAccount);
@@ -99,6 +100,47 @@ describe("entradas pendientes", () => {
     expect(await db.select().from(schema.expense)).toHaveLength(0);
   });
 
+  it("permite crear manualmente un pendiente vacío indicando su tipo", async () => {
+    const response = await pendingEntriesCollectionResponse(
+      request("/api/pending-entries", "POST", { manualPending: true, entryType: "expense" }),
+      db,
+      ownerAccess,
+    );
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual(expect.objectContaining({
+      status: "pending",
+      sourceType: "manual",
+      interpretation: expect.objectContaining({ entryType: "expense" }),
+      issues: expect.arrayContaining(["INVALID_DATE", "INVALID_ACCOUNT"]),
+    }));
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+  });
+
+  it("permite eliminar definitivamente un pendiente manual, nunca uno de email", async () => {
+    const manual = await pendingEntriesCollectionResponse(request("/api/pending-entries", "POST", { manualPending: true, entryType: "expense" }), db, ownerAccess);
+    const manualId = (await manual.json()).id as string;
+    const deleted = await pendingEntryResourceResponse(request("/api/pending-entries/" + manualId, "DELETE"), manualId, db, ownerAccess);
+    expect(deleted.status).toBe(204);
+    expect(await db.select().from(schema.sourceEvent)).toHaveLength(0);
+
+    const email = await db.insert(schema.sourceEvent).values({ id: "email-source", userId: "pending-owner", sourceType: "email", originalPayload: { protected: true } }).returning();
+    await db.insert(schema.pendingEntry).values({ sourceEventId: email[0].id, userId: "pending-owner", interpretation: {}, issues: [] });
+    const denied = await pendingEntryResourceResponse(request("/api/pending-entries/email-source", "DELETE"), "email-source", db, ownerAccess);
+    expect(denied.status).toBe(404);
+    expect(await db.select().from(schema.sourceEvent)).toHaveLength(1);
+  });
+
+  it("registra un ingreso pendiente solo cuando sus datos son válidos", async () => {
+    const created = await pendingEntriesCollectionResponse(request("/api/pending-entries", "POST", { manualPending: true, entryType: "income", operationDate: "2026-10-28", operationTime: "09:15" }), db, ownerAccess);
+    const { id } = await created.json();
+    expect(await db.select().from(schema.income)).toHaveLength(0);
+    const result = await pendingEntryResourceResponse(request("/api/pending-entries/" + id, "PATCH", { operationDate: "2026-10-28", operationTime: "09:15", title: "Ingreso de prueba", accountId: "pending-account", amount: "125.50", currency: "UYU" }), id, db, ownerAccess);
+    expect(result.status).toBe(201);
+    expect(await result.json()).toEqual(expect.objectContaining({ status: "registered", income: expect.objectContaining({ title: "Ingreso de prueba", amount: "125.50" }) }));
+    expect(await db.select().from(schema.income)).toHaveLength(1);
+    expect(await db.select().from(schema.pendingEntry)).toHaveLength(0);
+  });
+
   it("lista y cuenta pendientes de todos los meses", async () => {
     for (const input of [
       { title: "Sin fecha uno" },
@@ -124,9 +166,9 @@ describe("entradas pendientes", () => {
     });
   });
 
-  it("mantiene pendiente una corrección incompleta y registra la intervención", async () => {
+  it("mantiene un borrador manual incompleto sin guardar cambios parciales", async () => {
     const created = await pendingEntriesCollectionResponse(
-      request("/api/pending-entries", "POST", { title: "Compra pendiente" }),
+      request("/api/pending-entries", "POST", { manualPending: true, entryType: "expense", title: "Compra pendiente" }),
       db,
       ownerAccess,
     );
@@ -145,7 +187,7 @@ describe("entradas pendientes", () => {
     expect(await response.json()).toEqual(
       expect.objectContaining({
         status: "pending",
-        reviewedAt: expect.any(String),
+        reviewedAt: null,
         interpretation: expect.objectContaining({
           title: "Compra corregida",
           operationDate: "2026-10-20",
@@ -153,6 +195,8 @@ describe("entradas pendientes", () => {
         issues: expect.arrayContaining(["INVALID_AMOUNT", "INVALID_ACCOUNT"]),
       }),
     );
+    expect((await db.select().from(schema.pendingEntry))[0].interpretation).toEqual(expect.objectContaining({ title: "Compra pendiente" }));
+    expect(await db.select().from(schema.sourceEventReview)).toHaveLength(0);
     expect(await db.select().from(schema.expense)).toHaveLength(0);
   });
 
@@ -164,14 +208,6 @@ describe("entradas pendientes", () => {
       ownerAccess,
     );
     const { id } = await created.json();
-    await pendingEntryResourceResponse(
-      request("/api/pending-entries/" + id, "PATCH", {
-        title: "Primera corrección todavía incompleta",
-      }),
-      id,
-      db,
-      ownerAccess,
-    );
     const complete = {
       operationDate: "2026-10-20",
       operationTime: "",
@@ -206,12 +242,9 @@ describe("entradas pendientes", () => {
     const [event] = await db.select().from(schema.sourceEvent);
     expect(event.originalPayload).toEqual(original);
     const reviews = await db.select().from(schema.sourceEventReview);
-    expect(reviews).toHaveLength(2);
-    expect(reviews.map((review) => review.outcome)).toEqual([
-      "pending",
-      "registered",
-    ]);
-    expect(reviews[1].interpretation).toEqual(complete);
+    expect(reviews).toHaveLength(1);
+    expect(reviews.map((review) => review.outcome)).toEqual(["registered"]);
+    expect(reviews[0].interpretation).toEqual(complete);
     expect(await db.select().from(schema.pendingEntry)).toHaveLength(0);
     expect(await db.select().from(schema.expense)).toHaveLength(1);
 

@@ -5,6 +5,7 @@ import { listAccounts } from "@/modules/accounts/service";
 import { listCategories } from "@/modules/categories/service";
 import { listMovementHistory, type HistoryFilters } from "@/modules/movements/history";
 import { MovementTable } from "@/components/movement-table";
+import { listPendingEntries } from "@/modules/pending-entries/service";
 
 export const dynamic = "force-dynamic";
 function currentMonth() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Montevideo", year: "numeric", month: "2-digit" }).format(new Date()); }
@@ -14,10 +15,11 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const raw = await searchParams;
   const filters: HistoryFilters = { ...raw, month: raw.month ?? currentMonth(), includeHouse: raw.includeHouse === "true", includeVoided: raw.includeVoided === "true" };
   const db = getAuthRuntime().db;
-  const [movements, accounts, categories] = await Promise.all([
+  const [movements, accounts, categories, pendingEntries] = await Promise.all([
     listMovementHistory(db, access.userId, filters),
     listAccounts(db, access.userId, true),
     listCategories(db, access.userId, true),
+    listPendingEntries(db, access.userId),
   ]);
   return <main className="mx-auto min-h-dvh max-w-7xl px-5 py-8 sm:px-10 sm:py-12">
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-7"><div><Link href="/privado" className="font-semibold">Registro de Gastos</Link><p className="mt-2 text-sm text-stone-600">Casa Nueva y los anulados están ocultos por defecto.</p></div></header>
@@ -31,6 +33,15 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="includeVoided" value="true" defaultChecked={filters.includeVoided} />Mostrar anulados</label>
         <button className="min-h-11 rounded-lg bg-emerald-900 px-4 font-semibold text-white lg:col-span-2">Aplicar filtros</button>
       </form>
+      {pendingEntries.length > 0 && <section className="mt-8 rounded-2xl border border-amber-300/40 bg-amber-300/5 p-4 sm:p-6" aria-labelledby="pending-movements-heading">
+        <div className="flex items-center justify-between gap-4"><h2 id="pending-movements-heading" className="text-lg font-semibold">Pendientes ({pendingEntries.length})</h2><p className="text-sm text-stone-500">No afectan saldos ni totales</p></div>
+        <ul className="mt-4 divide-y divide-stone-200/10">{pendingEntries.map((entry) => {
+          const type = entry.interpretation.entryType === "income" ? "Ingreso" : entry.interpretation.entryType === "own-transfer" ? "Transferencia / retiro" : entry.interpretation.entryType === "conversion" ? "Conversión" : "Gasto";
+          const title = typeof entry.interpretation.title === "string" && entry.interpretation.title ? entry.interpretation.title : `${type} sin detalle`;
+          const date = typeof entry.interpretation.operationDate === "string" ? entry.interpretation.operationDate : "Sin fecha";
+          return <li key={entry.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate font-medium"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-amber-400" aria-hidden="true" />{title}</p><p className="mt-1 text-xs text-stone-500">Pendiente · {type} · {date}</p></div><Link aria-label={`Editar ${title}`} href={`/privado/pendientes/${entry.id}`} className="shrink-0 rounded-lg border border-stone-300/20 px-3 py-2 text-sm">✎ Editar</Link></li>;
+        })}</ul>
+      </section>}
       <MovementTable movements={movements} accounts={accounts} categories={categories} />
     </section>
   </main>;

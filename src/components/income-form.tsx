@@ -7,6 +7,7 @@ import type { AccountView } from "@/modules/accounts/domain";
 import { Button } from "@/components/ui/button";
 import { currentExpenseDateTime } from "@/components/expense-fields";
 import { IncomeFields, incomeErrorMessages, useIncomeFields } from "@/components/income-fields";
+import { SavePendingButton } from "@/components/save-pending-button";
 
 type CreatedIncome = { id: string; title: string; amount: string; currency: "UYU" | "USD" };
 
@@ -54,6 +55,7 @@ export function IncomeForm({ accounts }: { accounts: AccountView[] }) {
         <IncomeFields accounts={accounts} fields={fields} />
         <div className="sm:col-span-2">
           <Button disabled={pending || !selectedAccount}>{pending ? "Registrando…" : "Registrar ingreso"}</Button>
+          <SavePendingButton entryType="income" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
           {error && <p role="alert" className="mt-4 text-sm text-red-800">{error}</p>}
         </div>
       </form>

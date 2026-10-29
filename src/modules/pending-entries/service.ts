@@ -17,6 +17,8 @@ import {
   getTransferDetail,
   validateTransferReferences,
 } from "@/modules/transfers/service";
+import type { IncomeInput } from "@/modules/incomes/domain";
+import { getIncomeDetail, validateIncomeReferences } from "@/modules/incomes/service";
 
 export type PendingEntryView = {
   id: string;
@@ -278,6 +280,26 @@ export async function completePendingEntry<T extends PgQueryResultHKT>(
         expense: completed.movement,
       }
     : completed;
+}
+
+export async function completePendingIncome<T extends PgQueryResultHKT>(db: ExpensesDatabase<T>, userId: string, id: string, input: IncomeInput, interpretation: Record<string, unknown>) {
+  const completed = await completePendingMovement(
+    db, userId, id, interpretation,
+    () => validateIncomeReferences(db, userId, input),
+    async (transaction, incomeId) => { await transaction.insert(schema.income).values({ id: incomeId, userId, sourceEventId: id, ...input }); },
+    (incomeId) => getIncomeDetail(db, userId, incomeId),
+    "Completed income is unavailable",
+  );
+  return completed.ok ? { ok: true as const, reviewedAt: completed.reviewedAt, income: completed.movement } : completed;
+}
+
+export async function deleteManualPendingEntry<T extends PgQueryResultHKT>(db: ExpensesDatabase<T>, userId: string, id: string): Promise<boolean> {
+  const entry = await getPendingEntry(db, userId, id);
+  if (!entry || entry.sourceType !== "manual") return false;
+  const [deleted] = await db.delete(schema.sourceEvent).where(and(
+    eq(schema.sourceEvent.id, id), eq(schema.sourceEvent.userId, userId), eq(schema.sourceEvent.sourceType, "manual"),
+  )).returning({ id: schema.sourceEvent.id });
+  return Boolean(deleted);
 }
 
 export async function completePendingTransfer<T extends PgQueryResultHKT>(

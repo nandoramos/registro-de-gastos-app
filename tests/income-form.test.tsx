@@ -41,6 +41,7 @@ describe("formulario de ingresos", () => {
     expect((screen.getByLabelText("Detalle") as HTMLInputElement).value).toBe("Sueldo");
     expect((screen.getByLabelText("Fecha") as HTMLInputElement).value).not.toBe("");
     expect((screen.getByLabelText("Hora (opcional)") as HTMLInputElement).value).not.toBe("");
+    expect(screen.getByRole("button", { name: "Guardar pendiente" })).toBeTruthy();
     await user.clear(screen.getByLabelText("Detalle"));
     await user.type(screen.getByLabelText("Detalle"), "Honorarios");
     await user.type(screen.getByLabelText("Importe"), "900,25");

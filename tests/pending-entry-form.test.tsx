@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PendingEntryForm } from "@/components/pending-entry-form";
+import { PendingIncomeForm } from "@/components/pending-income-form";
 
 afterEach(() => {
   cleanup();
@@ -60,4 +61,12 @@ it("completa un pendiente y enlaza el gasto registrado", async () => {
     "/api/pending-entries/pending-1",
     expect.objectContaining({ method: "PATCH" }),
   );
+});
+
+it("muestra qué falta al intentar registrar un ingreso pendiente", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ status: "pending", issues: ["INVALID_AMOUNT"] })));
+  const user = userEvent.setup();
+  render(<PendingIncomeForm entry={{ id: "income-pending", interpretation: { operationDate: "2026-10-20", title: "Ingreso", accountId: "account-1", amount: "10.00" }, issues: [] }} accounts={[{ id: "account-1", name: "Cuenta pesos", kind: "bank", currency: "UYU" }]} />);
+  await user.click(screen.getByRole("button", { name: "Guardar y registrar" }));
+  expect(await screen.findByText("Falta un importe positivo con hasta 2 decimales.")).toBeTruthy();
 });

@@ -8,6 +8,7 @@ import type { TransferDetail } from "@/modules/transfers/domain";
 import { transferIssueLabel } from "@/modules/transfers/domain";
 import { currentExpenseDateTime } from "@/components/expense-fields";
 import { Button } from "@/components/ui/button";
+import { SavePendingButton } from "@/components/save-pending-button";
 
 type PendingTransfer = {
   id: string;
@@ -323,6 +324,7 @@ export function TransferForm({
               ? "Guardar y registrar"
               : "Registrar transferencia"}
         </Button>
+        {!entry && !existing && <SavePendingButton entryType="own-transfer" draft={{ kind, operationDate, title, note, sourceAccountId, destinationAccountId, sourceAmount, destinationAmount, currency: sourceAccount?.currency }} />}
       </div>
     </form>
   );

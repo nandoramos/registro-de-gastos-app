@@ -55,6 +55,7 @@ describe("formulario de transferencias propias", () => {
 
     const operationDate = (screen.getByLabelText("Fecha") as HTMLInputElement).value;
     expect(operationDate).not.toBe("");
+    expect(screen.getByRole("button", { name: "Guardar pendiente" })).toBeTruthy();
     await user.selectOptions(
       screen.getByLabelText("Cuenta de destino"),
       "bank-b",

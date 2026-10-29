@@ -2,8 +2,8 @@ import type { PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { GetAccess } from "@/modules/auth/http";
 import type { ExpensesDatabase } from "@/modules/expenses/service";
 import { recordFromUnknown } from "./domain";
-import { getPendingEntry, listPendingEntries } from "./service";
-import { ingestManualCandidate, reviewPendingCandidate } from "./workflow";
+import { deleteManualPendingEntry, getPendingEntry, listPendingEntries } from "./service";
+import { createManualPendingCandidate, ingestManualCandidate, reviewPendingCandidate } from "./workflow";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -51,6 +51,12 @@ export async function pendingEntriesCollectionResponse<
         { status: 422, headers },
       );
     }
+    if (original.manualPending === true) {
+      if (typeof original.entryType !== "string") return Response.json({ error: "INVALID_ENTRY_TYPE" }, { status: 422, headers });
+      const initial = Object.fromEntries(Object.entries(original).filter(([key]) => key !== "manualPending" && key !== "entryType"));
+      const entry = await createManualPendingCandidate(db, access.userId, original.entryType, initial);
+      return entry ? Response.json(entry, { status: 202, headers }) : Response.json({ error: "INVALID_ENTRY_TYPE" }, { status: 422, headers });
+    }
     const result = await ingestManualCandidate(db, access.userId, original);
     return result.kind === "registered"
       ? Response.json(result.expense, { status: 201, headers })
@@ -77,6 +83,10 @@ export async function pendingEntryResourceResponse<T extends PgQueryResultHKT>(
       return entry
         ? Response.json(entry, { headers })
         : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
+    }
+    if (request.method === "DELETE") {
+      const deleted = await deleteManualPendingEntry(db, access.userId, id);
+      return deleted ? new Response(null, { status: 204, headers }) : Response.json({ error: "NOT_FOUND" }, { status: 404, headers });
     }
     if (request.method !== "PATCH") {
       return Response.json(
@@ -112,6 +122,9 @@ export async function pendingEntryResourceResponse<T extends PgQueryResultHKT>(
         },
         { status: 201, headers },
       );
+    }
+    if (result.kind === "registered-income") {
+      return Response.json({ status: "registered", reviewedAt: result.reviewedAt, income: result.income }, { status: 201, headers });
     }
     if (result.kind === "registered-conversion") {
       return Response.json(

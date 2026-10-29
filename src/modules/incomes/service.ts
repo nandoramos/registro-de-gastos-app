@@ -77,6 +77,10 @@ async function validateIncomeAccount<T extends PgQueryResultHKT>(
   return { ok: true as const };
 }
 
+export async function validateIncomeReferences<T extends PgQueryResultHKT>(db: IncomesDatabase<T>, userId: string, input: IncomeInput) {
+  return validateIncomeAccount(db, userId, input);
+}
+
 export async function registerManualIncome<T extends PgQueryResultHKT>(
   db: IncomesDatabase<T>,
   userId: string,

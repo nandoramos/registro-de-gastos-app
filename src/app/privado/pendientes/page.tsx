@@ -3,6 +3,7 @@ import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listPendingEntries } from "@/modules/pending-entries/service";
 import { pendingIssueLabel } from "@/modules/pending-entries/domain";
+import { ManualPendingCreateForm } from "@/components/manual-pending-create-form";
 
 export const dynamic = "force-dynamic";
 export default async function PendingEntriesPage() {
@@ -19,6 +20,7 @@ export default async function PendingEntriesPage() {
       <p className="mt-4 text-stone-600">
         El contador incluye entradas de todos los meses.
       </p>
+      <ManualPendingCreateForm />
       <ul className="mt-8 grid gap-3">
         {entries.map((entry) => (
           <li key={entry.id} className="rounded-2xl border bg-white p-5">

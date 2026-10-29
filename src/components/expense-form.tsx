@@ -13,6 +13,7 @@ import {
 } from "@/components/expense-fields";
 import { Button } from "@/components/ui/button";
 import { expenseWouldOverdraw } from "@/modules/expenses/domain";
+import { SavePendingButton } from "@/components/save-pending-button";
 
 type CreatedExpense = {
   id: string;
@@ -98,6 +99,7 @@ export function ExpenseForm({
           <Button disabled={pending || !selectedAccount}>
             {pending ? "Registrando…" : "Registrar gasto"}
           </Button>
+          <SavePendingButton entryType="expense" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, categoryId: fields.categoryId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
           {error && (
             <p role="alert" className="mt-4 text-sm text-red-800">
               {error}

@@ -5,6 +5,8 @@ import { TransferForm } from "@/components/transfer-form";
 import { ConversionForm } from "@/components/conversion-form";
 import { EmailTransferChoiceForm } from "@/components/email-transfer-choice-form";
 import { EntryStatusActions } from "@/components/entry-status-actions";
+import { PendingManualDeleteButton } from "@/components/pending-manual-delete-button";
+import { PendingIncomeForm } from "@/components/pending-income-form";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
@@ -33,12 +35,14 @@ export default async function PendingEntryPage({
   if (!entry) notFound();
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-6 py-10">
-      <Link href="/privado/pendientes" className="font-semibold underline">
-        Volver a pendientes ({pendingCount})
+      <Link href="/privado/historial" className="font-semibold underline">
+        Cancelar y volver a Movimientos ({pendingCount} pendientes)
       </Link>
       <h1 className="mt-10 text-4xl font-semibold">Completar entrada</h1>
       <div className="mt-8 rounded-2xl border bg-white p-6">
-        {entry.interpretation.entryType === "email-transfer-choice" ? (
+        {entry.interpretation.entryType === "income" ? (
+          <PendingIncomeForm entry={entry} accounts={accounts} />
+        ) : entry.interpretation.entryType === "email-transfer-choice" ? (
           <EmailTransferChoiceForm
             entryId={entry.id}
             accounts={accounts}
@@ -57,7 +61,7 @@ export default async function PendingEntryPage({
         )}
       </div>
       <div className="mt-6">
-        <EntryStatusActions entryId={entry.id} status="pending" />
+        {entry.sourceType === "manual" ? <PendingManualDeleteButton entryId={entry.id} /> : <EntryStatusActions entryId={entry.id} status="pending" />}
       </div>
       <section className="mt-8 rounded-2xl bg-stone-100 p-6">
         <h2 className="font-semibold">Evidencia original</h2>
