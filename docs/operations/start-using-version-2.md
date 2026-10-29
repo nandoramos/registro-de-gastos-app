@@ -14,7 +14,31 @@ El modelo distingue los datos de configuración de los registros de actividad:
 
 Los movimientos registrados referencian eventos de fuente sin borrado en cascada; por eso se deben retirar primero los movimientos y después sus eventos. Los pendientes y las revisiones de fuente sí dependen del evento y se eliminan al retirarlo. El borrado debe limitarse al `user_id` autorizado.
 
-No existe una marca técnica que diferencie un registro de prueba de uno real. El usuario indicó que los registros cargados hasta ahora son de prueba; antes de limpiar, hay que confirmarlo mirando en la app el inventario agregado (cantidades por tipo y estado) y contrastarlo con este alcance. No usar títulos, fechas o importes como detector automático de datos de prueba.
+No existe una marca técnica que diferencie un registro de prueba de uno real. El usuario indicó que los registros cargados hasta ahora son de prueba. Se inspeccionó en modo `READ ONLY` la conexión Neon configurada para la app el 29 de octubre de 2026; sólo se consultaron conteos, sin abrir nombres, importes, notas ni payloads:
+
+| Datos conservados | Conteo observado |
+| --- | ---: |
+| Usuarios en la instalación | 1 |
+| Cuentas activas | 8 |
+| Cuentas archivadas | 0 |
+| Cuentas activas sin saldo inicial | 0 |
+| Categorías activas | 21 |
+| Categorías archivadas | 0 |
+
+| Datos candidatos a limpiar (según la confirmación del usuario de que todo lo cargado es de prueba) | Activos | Anulados / descartados |
+| --- | ---: | ---: |
+| Gastos | 1 | 0 |
+| Ingresos | 0 | 0 |
+| Transferencias / retiros | 0 | 0 |
+| Conversiones | 0 | 0 |
+| Ajustes manuales | 0 | 0 |
+| Entradas pendientes / descartadas | 0 | 0 |
+| Evidencias de fuente (manuales / email) | 0 / 1 | — |
+| Revisiones de fuente | 1 | — |
+| Eventos de anulación / restauración | 0 | — |
+| Revisiones de gastos | 0 | — |
+
+La propuesta es conservar las 8 cuentas y 21 categorías actuales y limpiar las filas de actividad listadas, incluyendo la única evidencia de email y su revisión. No se inspeccionó el contenido de esa evidencia. Confirmar de nuevo el inventario agregado y que la evidencia es de prueba antes de borrar; no usar títulos, fechas o importes como detector automático.
 
 ## Procedimiento antes de empezar
 
@@ -48,6 +72,7 @@ Las pruebas no usan la base personal ni datos bancarios reales:
 - `tests/accounts-manager.test.tsx` comprueba que una cuenta sin saldo se identifica como pendiente, que el total se marca incompleto y que se puede configurar un saldo inicial.
 - `tests/opening-balance.integration.test.ts` comprueba autorización, saldos iniciales, bloqueo de cuentas sin configurar y efecto de movimientos.
 - `tests/startup-workflow.integration.test.ts` recorre con datos sintéticos la configuración inicial, un gasto, un ajuste al saldo observado, los movimientos/totales y la anulación.
+- `tests/startup-views.test.tsx` renderiza las páginas privadas reales de Inicio y Movimientos con un runtime de autorización y datos PGlite ficticios, y comprueba el recorrido a 1440 px y 390 px.
 - `tests/adjustments.integration.test.ts` comprueba además la conciliación, el historial y la restauración con datos ficticios.
 - `npm run test:e2e` verifica acceso, protección de rutas y reintento ante error tanto en escritorio como en móvil. Usa Google Chrome instalado y el servidor local; no inicia OAuth real. Las integraciones usan PGlite aislado y no abren la base personal.
 
