@@ -5,6 +5,7 @@ import { SignOutButton } from "@/components/auth-buttons";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
+import { getQuoteSettings } from "@/modules/settings/service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +13,13 @@ export default async function AccountsPage() {
   const access = await requireAuthorizedPage();
 
   let accounts;
+  let quoteSettings;
   try {
-    accounts = await listAccounts(getAuthRuntime().db, access.userId, true);
+    const db = getAuthRuntime().db;
+    [accounts, quoteSettings] = await Promise.all([
+      listAccounts(db, access.userId, true),
+      getQuoteSettings(db, access.userId),
+    ]);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -36,7 +42,7 @@ export default async function AccountsPage() {
           se configura por separado para cada moneda.
         </p>
         <div className="mt-10">
-          <AccountsManager initialAccounts={accounts} />
+          <AccountsManager initialAccounts={accounts} quoteSettings={quoteSettings} />
         </div>
       </div>
     </main>

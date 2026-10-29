@@ -9,6 +9,7 @@ import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listAccounts } from "@/modules/accounts/service";
 import { listCategories } from "@/modules/categories/service";
+import { getQuoteSettings } from "@/modules/settings/service";
 import {
   countPendingEntries,
   getPendingEntry,
@@ -22,11 +23,12 @@ export default async function PendingEntryPage({
 }) {
   const access = await requireAuthorizedPage();
   const db = getAuthRuntime().db;
-  const [entry, accounts, categories, pendingCount] = await Promise.all([
+  const [entry, accounts, categories, pendingCount, quoteSettings] = await Promise.all([
     getPendingEntry(db, access.userId, (await params).id),
     listAccounts(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
     listCategories(db, access.userId),
     countPendingEntries(db, access.userId),
+    getQuoteSettings(db, access.userId),
   ]);
   if (!entry) notFound();
   return (
@@ -43,7 +45,7 @@ export default async function PendingEntryPage({
             categories={categories}
           />
         ) : entry.interpretation.entryType === "conversion" ? (
-          <ConversionForm entry={entry} accounts={accounts} />
+          <ConversionForm entry={entry} accounts={accounts} quoteSettings={quoteSettings} />
         ) : entry.interpretation.entryType === "own-transfer" ? (
           <TransferForm entry={entry} accounts={accounts} />
         ) : (

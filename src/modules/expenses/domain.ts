@@ -2,6 +2,8 @@ import {
   accountCurrencies,
   type AccountCurrency,
 } from "@/modules/accounts/domain";
+import { normalizeMoneyAmount } from "@/modules/money/decimal";
+export { normalizeMoneyAmount } from "@/modules/money/decimal";
 
 export type ExpenseInput = {
   operationDate: string;
@@ -70,23 +72,6 @@ export function validOperationDate(value: unknown): value is string {
     !Number.isNaN(parsed.valueOf()) &&
     parsed.toISOString().slice(0, 10) === value && value <= today
   );
-}
-
-export function normalizeMoneyAmount(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const input = value.trim();
-  const normalized = /^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(input) ? input.replaceAll(".", "").replace(",", ".")
-    : /^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(input) ? input.replaceAll(",", "") : input;
-  if (!/^\d+(?:[.,]\d{1,2})?$/.test(normalized)) {
-    return undefined;
-  }
-  const [rawWhole, rawFraction = ""] = normalized.split(/[.,]/);
-  const whole = rawWhole.replace(/^0+(?=\d)/, "");
-  const fraction = rawFraction.padEnd(2, "0");
-  if (whole.length > 16 || (/^0+$/.test(whole) && /^0*$/.test(fraction))) {
-    return undefined;
-  }
-  return `${whole}.${fraction}`;
 }
 
 export function expenseWouldOverdraw(balance: string | null | undefined, amount: string, previousAmount = "0.00"): boolean {

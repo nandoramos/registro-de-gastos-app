@@ -8,6 +8,12 @@ import {
   conversionIssueLabel,
 } from "@/modules/conversions/domain";
 import { Button } from "@/components/ui/button";
+import { currentExpenseDateTime } from "@/components/expense-fields";
+import {
+  DEFAULT_QUOTE_SETTINGS,
+  quoteForConversion,
+  type QuoteSettings,
+} from "@/modules/settings/domain";
 
 type PendingConversion = {
   id: string;
@@ -26,11 +32,14 @@ function bool(value: unknown): boolean {
 export function ConversionForm({
   accounts,
   entry,
+  quoteSettings = DEFAULT_QUOTE_SETTINGS,
 }: {
   accounts: AccountView[];
   entry?: PendingConversion;
+  quoteSettings?: QuoteSettings;
 }) {
   const initial = entry?.interpretation ?? {};
+  const today = currentExpenseDateTime().operationDate;
   const firstSource = text(initial.sourceAccountId) || accounts[0]?.id || "";
   const initialSource = accounts.find((account) => account.id === firstSource);
   const firstDestination =
@@ -41,9 +50,7 @@ export function ConversionForm({
         account.currency !== initialSource?.currency,
     )?.id ||
     "";
-  const [operationDate, setOperationDate] = useState(
-    text(initial.operationDate),
-  );
+  const [operationDate, setOperationDate] = useState(text(initial.operationDate) || today);
   const [title, setTitle] = useState(text(initial.title));
   const [note, setNote] = useState(text(initial.note));
   const [sourceAccountId, setSourceAccountId] = useState(firstSource);
@@ -56,7 +63,12 @@ export function ConversionForm({
   const [destinationConfirmed, setDestinationConfirmed] = useState(
     bool(initial.destinationConfirmed),
   );
-  const [quote, setQuote] = useState(text(initial.quote));
+  const initialQuote = quoteForConversion(
+    initialSource?.currency ?? "USD",
+    accounts.find((account) => account.id === firstDestination)?.currency ?? "UYU",
+    quoteSettings,
+  );
+  const [quote, setQuote] = useState(text(initial.quote) || initialQuote || "");
   const [institution, setInstitution] = useState(text(initial.institution));
   const [otherInstitutionName, setOtherInstitutionName] = useState(
     text(initial.otherInstitutionName),
@@ -71,6 +83,29 @@ export function ConversionForm({
   const destinationAccount = accounts.find(
     (account) => account.id === destinationAccountId,
   );
+  const destinationOptions = accounts.filter((account) => account.id !== sourceAccountId && account.currency !== sourceAccount?.currency);
+  const quoteDirection = sourceAccount?.currency === "USD" && destinationAccount?.currency === "UYU" ? "compra" : "venta";
+
+  function setQuoteForAccounts(sourceId: string, destinationId: string) {
+    const source = accounts.find((account) => account.id === sourceId);
+    const destination = accounts.find((account) => account.id === destinationId);
+    const suggested = source && destination
+      ? quoteForConversion(source.currency, destination.currency, quoteSettings)
+      : undefined;
+    if (suggested) setQuote(suggested);
+  }
+
+  function updateSourceAccount(nextSourceId: string) {
+    setSourceAccountId(nextSourceId);
+    let nextDestinationId = destinationAccountId;
+    const options = accounts.filter((account) => account.id !== nextSourceId && account.currency !== accounts.find((item) => item.id === nextSourceId)?.currency);
+    if (!options.some((account) => account.id === nextDestinationId)) {
+      nextDestinationId = options[0]?.id ?? "";
+      setDestinationAccountId(nextDestinationId);
+    }
+    setQuoteForAccounts(nextSourceId, nextDestinationId);
+    setDestinationConfirmed(false);
+  }
 
   function calculate() {
     if (!sourceAccount || !sourceAmount || !quote) return;
@@ -221,8 +256,7 @@ export function ConversionForm({
         <select
           value={sourceAccountId}
           onChange={(event) => {
-            setSourceAccountId(event.target.value);
-            setDestinationConfirmed(false);
+            updateSourceAccount(event.target.value);
           }}
           className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
         >
@@ -240,12 +274,13 @@ export function ConversionForm({
           value={destinationAccountId}
           onChange={(event) => {
             setDestinationAccountId(event.target.value);
+            setQuoteForAccounts(sourceAccountId, event.target.value);
             setDestinationConfirmed(false);
           }}
           className="mt-2 min-h-12 w-full rounded-xl border bg-white px-4"
         >
           <option value="">Elegir cuenta</option>
-          {accounts.map((account) => (
+          {destinationOptions.map((account) => (
             <option key={account.id} value={account.id}>
               {account.name} · {account.currency}
             </option>
@@ -274,6 +309,7 @@ export function ConversionForm({
           placeholder="1 USD = 40,25 UYU"
         />
       </label>
+      {sourceAccount && destinationAccount && <p className="text-sm text-stone-600">Sugerencia según cotización de {quoteDirection}: {quoteDirection === "compra" ? "al cambiar dólares por pesos" : "al cambiar pesos por dólares"}.</p>}
       <div className="sm:col-span-2">
         <Button type="button" variant="outline" onClick={calculate}>
           Calcular acreditación

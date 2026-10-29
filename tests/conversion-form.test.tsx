@@ -31,9 +31,11 @@ describe("formulario de conversiones", () => {
     const user = userEvent.setup();
     render(<ConversionForm accounts={accounts} />);
 
+    await user.clear(screen.getByLabelText("Fecha"));
     await user.type(screen.getByLabelText("Fecha"), "2026-10-24");
     await user.type(screen.getByLabelText("Título"), "Compra de pesos");
     await user.type(screen.getByLabelText("Importe debitado"), "10");
+    await user.clear(screen.getByLabelText("Cotización de referencia"));
     await user.type(screen.getByLabelText("Cotización de referencia"), "40,25");
     await user.click(
       screen.getByRole("button", { name: "Calcular acreditación" }),
@@ -89,6 +91,17 @@ describe("formulario de conversiones", () => {
       "other",
     );
     expect(screen.getByLabelText("Nombre de la institución")).toBeTruthy();
+  });
+
+  it("sugiere compra al vender dólares y venta al comprar dólares", async () => {
+    const user = userEvent.setup();
+    render(<ConversionForm accounts={accounts} quoteSettings={{ buyRate: "39.00", sellRate: "41.00" }} />);
+    expect((screen.getByLabelText("Cotización de referencia") as HTMLInputElement).value).toBe("39.00");
+    expect(screen.getByText(/cotización de compra/i)).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText("Cuenta de origen"), "uyu");
+    expect((screen.getByLabelText("Cotización de referencia") as HTMLInputElement).value).toBe("41.00");
+    expect(screen.getByText(/cotización de venta/i)).toBeTruthy();
+    expect((screen.getByLabelText("Cuenta de destino") as HTMLSelectElement).value).toBe("usd");
   });
 
   it("completa una conversión pendiente desde la misma interfaz", async () => {

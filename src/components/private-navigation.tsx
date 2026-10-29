@@ -14,7 +14,7 @@ const primary = [
   { label: "Ajuste manual" },
   { label: "Cuentas", href: "/privado/cuentas" },
   { label: "Configurar categorías", href: "/privado/categorias" },
-  { label: "Configuraciones" },
+  { label: "Configuraciones", href: "/privado/configuraciones" },
 ];
 const existing = [
   { label: "Pendientes", href: "/privado/pendientes" },

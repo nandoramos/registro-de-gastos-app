@@ -2,10 +2,8 @@ import {
   accountCurrencies,
   type AccountCurrency,
 } from "@/modules/accounts/domain";
-import {
-  normalizeMoneyAmount,
-  validOperationDate,
-} from "@/modules/expenses/domain";
+import { validOperationDate } from "@/modules/expenses/domain";
+import { normalizeMoneyAmount } from "@/modules/money/decimal";
 
 export type IncomeInput = {
   operationDate: string;

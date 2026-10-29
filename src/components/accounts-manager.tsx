@@ -7,6 +7,8 @@ import type {
   AccountKind,
   AccountView,
 } from "@/modules/accounts/domain";
+import { calculateEstimatedUsdTotal, DEFAULT_QUOTE_SETTINGS, type QuoteSettings } from "@/modules/settings/domain";
+import { formatScaledInteger, parseBalanceCents } from "@/modules/money/decimal";
 
 type ApiError = { error?: string };
 
@@ -45,8 +47,10 @@ function errorMessage(error?: string) {
 
 export function AccountsManager({
   initialAccounts,
+  quoteSettings = DEFAULT_QUOTE_SETTINGS,
 }: {
   initialAccounts: AccountView[];
+  quoteSettings?: QuoteSettings;
 }) {
   const [accounts, setAccounts] = useState(initialAccounts);
   const [showArchived, setShowArchived] = useState(false);
@@ -59,17 +63,22 @@ export function AccountsManager({
   const [editingName, setEditingName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const balanceTotals = (currency: AccountCurrency) => {
-    const total = accounts.filter((account) => account.currency === currency && (account.balance ?? account.openingBalance) != null).reduce((sum, account) => {
+  const balanceTotalCents = (currency: AccountCurrency) =>
+    accounts.filter((account) => !account.archivedAt && account.currency === currency && (account.balance ?? account.openingBalance) != null).reduce((sum, account) => {
       const value = account.balance ?? account.openingBalance!;
-      const negative = value.startsWith("-");
-      const [whole, fraction = ""] = value.replace(/^-/, "").split(".");
-      const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
-      return sum + (negative ? -cents : cents);
+      return sum + parseBalanceCents(value);
     }, 0n);
-    const absolute = total < 0n ? -total : total;
-    return `${total < 0n ? "-" : ""}${absolute / 100n},${(absolute % 100n).toString().padStart(2, "0")}`;
-  };
+  const decimalCents = (total: bigint) => formatScaledInteger(total, 2);
+  const formatCents = (total: bigint) => decimalCents(total).replace(".", ",");
+  const totalUyuCents = balanceTotalCents("UYU");
+  const totalUsdCents = balanceTotalCents("USD");
+  const activeAccounts = accounts.filter((account) => !account.archivedAt);
+  const totalIncomplete = activeAccounts.length === 0 || activeAccounts.some((account) => account.openingBalance == null);
+  const totalUsdEstimate = totalIncomplete ? undefined : calculateEstimatedUsdTotal(
+    decimalCents(totalUyuCents),
+    decimalCents(totalUsdCents),
+    quoteSettings.sellRate,
+  );
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -140,9 +149,11 @@ export function AccountsManager({
           Tus cuentas
         </h2>
         <label><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Mostrar archivadas</label>
-        {accounts.some((account) => account.openingBalance == null) && <p>El total general está incompleto: hay cuentas sin saldo inicial.</p>}
-        <p>Total UYU: {balanceTotals("UYU")}</p>
-        <p>Total USD: {balanceTotals("USD")}</p>
+        {totalIncomplete && <p>El total general está incompleto: hay cuentas sin saldo inicial.</p>}
+        <p>Total UYU: {formatCents(totalUyuCents)}</p>
+        <p>Total USD: {formatCents(totalUsdCents)}</p>
+        <p>Total estimado en USD: {totalUsdEstimate === undefined ? "Incompleto" : formatCents(BigInt(totalUsdEstimate.replace(".", "")))}</p>
+        <p className="text-sm text-stone-600">Cotización de venta: {quoteSettings.sellRate.replace(".", ",")} UYU por USD. Incluye cuentas bancarias y efectivo.</p>
         <p className="mt-2 text-sm leading-6 text-stone-600">
           Cada cuenta tiene una sola moneda. Configurá su saldo inicial para usarla en movimientos.
         </p>

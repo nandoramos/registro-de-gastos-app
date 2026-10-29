@@ -28,6 +28,27 @@ export const user = pgTable("auth_user", {
     .notNull()
     .defaultNow(),
 });
+export const userSettings = pgTable(
+  "user_settings",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    usdBuyRate: numeric("usd_buy_rate", { precision: 18, scale: 2 })
+      .notNull()
+      .default("40.00"),
+    usdSellRate: numeric("usd_sell_rate", { precision: 18, scale: 2 })
+      .notNull()
+      .default("40.00"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check("user_settings_buy_rate_positive", sql`${table.usdBuyRate} > 0`),
+    check("user_settings_sell_rate_positive", sql`${table.usdSellRate} > 0`),
+  ],
+);
 export const session = pgTable(
   "auth_session",
   {

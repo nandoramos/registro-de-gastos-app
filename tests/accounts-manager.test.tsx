@@ -32,6 +32,20 @@ describe("gestión de cuentas", () => {
     ]} />);
     expect(screen.getByText(/total general está incompleto/i)).toBeTruthy();
     expect(screen.getByText(/total UYU: 100,20/i)).toBeTruthy();
+    expect(screen.getByText(/total estimado en USD: incompleto/i)).toBeTruthy();
+  });
+  it("estima el total en USD a cotización de venta e incluye cuentas en efectivo", () => {
+    render(<AccountsManager
+      initialAccounts={[
+        { id: "usd", name: "Banco USD", kind: "bank", currency: "USD", openingBalance: "50.00", openingDate: "2026-10-28", balance: "50.00" },
+        { id: "cash", name: "Billetera UYU", kind: "cash", currency: "UYU", openingBalance: "2000.00", openingDate: "2026-10-28", balance: "2000.00" },
+      ]}
+      quoteSettings={{ buyRate: "39.00", sellRate: "40.00" }}
+    />);
+    expect(screen.getByText(/total UYU: 2000,00/i)).toBeTruthy();
+    expect(screen.getByText(/total USD: 50,00/i)).toBeTruthy();
+    expect(screen.getByText(/total estimado en USD: 100,00/i)).toBeTruthy();
+    expect(screen.getByText(/cotización de venta: 40,00/i)).toBeTruthy();
   });
   it("muestra cuentas archivadas y permite recuperarlas", async () => {
     const user = userEvent.setup();

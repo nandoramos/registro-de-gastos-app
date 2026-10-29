@@ -65,6 +65,18 @@ _Evitar_: transferencia como único término cuando sea necesario distinguir que
 Relación entre el importe realmente debitado y el realmente acreditado en las dos monedas de una conversión, identificando las monedas y el sentido en que se expresa. Refleja el resultado de la operación, que puede diferir de una cotización informada por la institución.
 _Evitar_: cotización de mercado o cotización informada como sinónimo de tipo de cambio efectivo; número sin monedas ni unidad de referencia.
 
+**Cotización de compra**:
+Precio vigente en pesos uruguayos por dólar que se usa cuando el usuario vende dólares y recibe pesos.
+_Evitar_: tipo de cambio efectivo como sinónimo.
+
+**Cotización de venta**:
+Precio vigente en pesos uruguayos por dólar que se usa cuando el usuario entrega pesos y recibe dólares. También sirve para expresar en USD un total estimado de saldos.
+_Evitar_: tipo de cambio efectivo como sinónimo.
+
+**Total estimado en USD**:
+Valor aproximado que combina los saldos en dólares con los saldos en pesos convertidos a dólares según la cotización de venta vigente. No reemplaza los saldos de cada cuenta en su moneda.
+_Evitar_: saldo real en dólares como sinónimo.
+
 **Institución de conversión**:
 Entidad o medio por el que se realiza el cambio de moneda, como Itaú o Prex. Es un dato opcional: su ausencia por sí sola no bloquea el registro de la conversión. Puede ser diferente de la institución de las cuentas de origen o destino y no se infiere a partir de ellas.
 _Evitar_: cuenta de origen o fuente de datos como sinónimo de institución de conversión.
