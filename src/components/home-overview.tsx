@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CurrencyTotal } from "@/modules/summary/home";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 export function HomeOverview({
   greeting,
@@ -37,7 +38,7 @@ export function HomeOverview({
             {expenses.map(({ currency, amount }) => (
               <li key={currency} className="rounded-xl border border-stone-300/10 bg-stone-900/40 p-5">
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{currency}</p>
-                <p className="mt-2 text-2xl font-semibold tabular-nums text-stone-100">{currency} {amount}</p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-stone-100">{formatMoneyAmount(currency, amount)}</p>
               </li>
             ))}
           </ul>

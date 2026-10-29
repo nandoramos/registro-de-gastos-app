@@ -1,6 +1,7 @@
 import type { AccountView } from "@/modules/accounts/domain";
 import type { CategoryView } from "@/modules/categories/domain";
 import type { ExpenseInput, ExpenseRevision } from "@/modules/expenses/domain";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 type ChangedField = {
   label: string;
@@ -41,8 +42,12 @@ function changedFields(
     .filter((key) => revision.previous[key] !== revision.current[key])
     .map((key) => ({
       label: display[key].label,
-      previous: display[key].value(revision.previous[key]),
-      current: display[key].value(revision.current[key]),
+      previous: key === "amount"
+        ? formatMoneyAmount(revision.previous.currency, revision.previous.amount)
+        : display[key].value(revision.previous[key]),
+      current: key === "amount"
+        ? formatMoneyAmount(revision.current.currency, revision.current.amount)
+        : display[key].value(revision.current[key]),
     }));
 }
 

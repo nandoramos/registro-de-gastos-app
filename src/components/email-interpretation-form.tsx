@@ -7,6 +7,7 @@ import {
   parseItauEmailText,
   type EmailInterpretation,
 } from "@/modules/email-import/itau-parser";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 const kindLabels = {
   expense: "Compra con débito",
@@ -85,7 +86,7 @@ Importe debitado: UYU 1.234,56`}
               {result.fields.amount && (
                 <Field
                   label="Importe debitado"
-                  value={`${result.fields.currency ? `${result.fields.currency} ` : ""}${result.fields.amount}`}
+                  value={result.fields.currency ? formatMoneyAmount(result.fields.currency, result.fields.amount) : result.fields.amount}
                 />
               )}
             </dl>

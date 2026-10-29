@@ -5,6 +5,7 @@ import { MovementStatusActions } from "@/components/movement-status-actions";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getConversionDetail } from "@/modules/conversions/service";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function ConversionDetailPage({
               {conversion.source.account.name}
             </dd>
             <dd className="text-lg font-semibold">
-              {conversion.source.currency} {conversion.source.amount}
+              {formatMoneyAmount(conversion.source.currency, conversion.source.amount)}
             </dd>
           </div>
           <div>
@@ -65,7 +66,7 @@ export default async function ConversionDetailPage({
               {conversion.destination.account.name}
             </dd>
             <dd className="text-lg font-semibold">
-              {conversion.destination.currency} {conversion.destination.amount}
+              {formatMoneyAmount(conversion.destination.currency, conversion.destination.amount)}
             </dd>
           </div>
           <div>

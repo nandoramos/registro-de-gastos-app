@@ -35,7 +35,7 @@ describe("gestión de cuentas", () => {
       { id: "b", name: "Sin saldo", kind: "bank", currency: "USD", openingBalance: null, openingDate: null },
     ]} />);
     expect(screen.getByText(/total general está incompleto/i)).toBeTruthy();
-    expect(screen.getByText(/total UYU: 100,20/i)).toBeTruthy();
+    expect(screen.getByText(/total UYU: \$100,20/i)).toBeTruthy();
     expect(screen.getByText(/total estimado en USD: incompleto/i)).toBeTruthy();
   });
   it("estima el total en USD a cotización de venta e incluye cuentas en efectivo", () => {
@@ -46,9 +46,9 @@ describe("gestión de cuentas", () => {
       ]}
       quoteSettings={{ buyRate: "39.00", sellRate: "40.00" }}
     />);
-    expect(screen.getByText(/total UYU: 2000,00/i)).toBeTruthy();
-    expect(screen.getByText(/total USD: 50,00/i)).toBeTruthy();
-    expect(screen.getByText(/total estimado en USD: 100,00/i)).toBeTruthy();
+    expect(screen.getByText(/total UYU: \$2\.000,00/i)).toBeTruthy();
+    expect(screen.getByText(/total USD: U\$S 50,00/i)).toBeTruthy();
+    expect(screen.getByText(/total estimado en USD: U\$S 100,00/i)).toBeTruthy();
     expect(screen.getByText(/cotización de venta: 40,00/i)).toBeTruthy();
   });
   it("incluye saldos archivados en totales aunque oculte las cuentas", () => {
@@ -62,8 +62,8 @@ describe("gestión de cuentas", () => {
       quoteSettings={{ buyRate: "45.00", sellRate: "50.00" }}
     />);
     expect(screen.queryByText("Cuenta archivada")).toBeNull();
-    expect(screen.getByText(/total UYU: 150,00/i)).toBeTruthy();
-    expect(screen.getByText(/total estimado en USD: 28,00/i)).toBeTruthy();
+    expect(screen.getByText(/total UYU: \$150,00/i)).toBeTruthy();
+    expect(screen.getByText(/total estimado en USD: U\$S 28,00/i)).toBeTruthy();
   });
   it("muestra cuentas archivadas y permite recuperarlas", async () => {
     const user = userEvent.setup();
@@ -85,7 +85,7 @@ describe("gestión de cuentas", () => {
     await user.clear(screen.getByLabelText("Fecha inicial de Billetera"));
     await user.type(screen.getByLabelText("Fecha inicial de Billetera"), "2026-10-28");
     await user.click(screen.getByRole("button", { name: "Guardar saldo inicial de Billetera" }));
-    expect(await screen.findByText(/Saldo: UYU 150,00/)).toBeTruthy();
+    expect(await screen.findByText(/Saldo: \$150,00/)).toBeTruthy();
   });
   it("crea una cuenta desde la interfaz y la muestra sin recargar", async () => {
     const fetchMock = vi.fn().mockResolvedValue(

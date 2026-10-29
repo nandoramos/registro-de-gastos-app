@@ -120,6 +120,7 @@ describe("formulario de gasto manual", () => {
       name: "Ver detalle y evidencia",
     });
     expect(detailLink.getAttribute("href")).toBe("/privado/gastos/expense-1");
+    expect(screen.getByText("U$S 42,50")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/expenses",
       expect.objectContaining({

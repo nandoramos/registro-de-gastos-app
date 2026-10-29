@@ -7,6 +7,7 @@ import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getIncomeDetail } from "@/modules/incomes/service";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function IncomeDetailPage({ params }: { params: Promise<{ i
         <div className="mt-6">
           <MovementStatusActions type="income" id={income.id} voided={Boolean(income.voidedAt)} />
         </div>
-        <p className="mt-4 text-2xl font-semibold text-emerald-700">+ {income.currency} {income.amount}</p>
+        <p className="mt-4 text-2xl font-semibold text-emerald-700">+ {formatMoneyAmount(income.currency, income.amount)}</p>
         <dl className="mt-10 grid gap-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:grid-cols-2">
           <div><dt className="text-xs uppercase tracking-wide text-stone-500">Fecha</dt><dd className="mt-1 font-medium">{income.operationDate}</dd></div>
           <div><dt className="text-xs uppercase tracking-wide text-stone-500">Hora</dt><dd className="mt-1 font-medium">{income.operationTime?.slice(0, 5) ?? "No indicada"}</dd></div>

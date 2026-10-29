@@ -10,6 +10,7 @@ import type {
 } from "@/modules/accounts/domain";
 import { calculateEstimatedUsdTotal, DEFAULT_QUOTE_SETTINGS, type QuoteSettings } from "@/modules/settings/domain";
 import { formatScaledInteger, parseBalanceCents } from "@/modules/money/decimal";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 type ApiError = { error?: string };
 
@@ -70,7 +71,6 @@ export function AccountsManager({
       return sum + parseBalanceCents(value);
     }, 0n);
   const decimalCents = (total: bigint) => formatScaledInteger(total, 2);
-  const formatCents = (total: bigint) => decimalCents(total).replace(".", ",");
   const totalUyuCents = balanceTotalCents("UYU");
   const totalUsdCents = balanceTotalCents("USD");
   const activeAccounts = accounts.filter((account) => !account.archivedAt);
@@ -151,9 +151,9 @@ export function AccountsManager({
         </h2>
         <label><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Mostrar archivadas</label>
         {totalIncomplete && <p>El total general está incompleto: hay cuentas sin saldo inicial.</p>}
-        <p>Total UYU: {formatCents(totalUyuCents)}</p>
-        <p>Total USD: {formatCents(totalUsdCents)}</p>
-        <p>Total estimado en USD: {totalUsdEstimate === undefined ? "Incompleto" : formatCents(BigInt(totalUsdEstimate.replace(".", "")))}</p>
+        <p>Total UYU: {formatMoneyAmount("UYU", decimalCents(totalUyuCents))}</p>
+        <p>Total USD: {formatMoneyAmount("USD", decimalCents(totalUsdCents))}</p>
+        <p>Total estimado en USD: {totalUsdEstimate === undefined ? "Incompleto" : formatMoneyAmount("USD", totalUsdEstimate)}</p>
         <p className="text-sm text-stone-600">Cotización de venta: {quoteSettings.sellRate.replace(".", ",")} UYU por USD. Incluye cuentas bancarias y efectivo.</p>
         <p className="mt-2 text-sm leading-6 text-stone-600">
           Cada cuenta tiene una sola moneda. Configurá su saldo inicial para usarla en movimientos.
@@ -206,7 +206,7 @@ export function AccountsManager({
                         · {account.currency}
                       </p>
                       <Link href={`/privado/historial?accountId=${encodeURIComponent(account.id)}&includeHouse=true`} className="mt-2 inline-block text-sm font-medium text-emerald-800 underline">Ver movimientos de esta cuenta</Link>
-                      {account.openingBalance != null ? <p>Saldo: {account.currency} {(account.balance ?? account.openingBalance).replace(".", ",")}</p> : <OpeningBalanceForm account={account} onSaved={(saved) => setAccounts((current) => current.map((item) => item.id === saved.id ? saved : item))} />}
+                      {account.openingBalance != null ? <p>Saldo: {formatMoneyAmount(account.currency, account.balance ?? account.openingBalance)}</p> : <OpeningBalanceForm account={account} onSaved={(saved) => setAccounts((current) => current.map((item) => item.id === saved.id ? saved : item))} />}
                     </div>
                     <Button
                       variant="outline"

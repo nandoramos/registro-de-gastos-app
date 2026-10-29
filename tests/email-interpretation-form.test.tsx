@@ -29,7 +29,7 @@ Importe debitado: USD 25,00`,
     expect(screen.getByText("Transferencia bancaria")).toBeTruthy();
     expect(screen.getByText("2026-10-23")).toBeTruthy();
     expect(screen.getByText("Persona Ejemplo")).toBeTruthy();
-    expect(screen.getByText("USD 25.00")).toBeTruthy();
+    expect(screen.getByText("U$S 25,00")).toBeTruthy();
     expect(
       screen.getByText(
         "Hay que decidir si la transferencia es un gasto o un traslado propio.",

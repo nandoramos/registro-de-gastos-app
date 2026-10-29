@@ -9,6 +9,7 @@ import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { listCategories } from "@/modules/categories/service";
 import { getExpenseDetail } from "@/modules/expenses/service";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export default async function ExpenseDetailPage({
         {expense.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado y no participa en totales.</p>}
         <div className="mt-6"><MovementStatusActions type="expense" id={expense.id} voided={Boolean(expense.voidedAt)} /></div>
         <p className="mt-4 text-2xl font-semibold">
-          {expense.currency} {expense.amount}
+          {formatMoneyAmount(expense.currency, expense.amount)}
         </p>
 
         <dl className="mt-10 grid gap-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:grid-cols-2">

@@ -52,6 +52,7 @@ describe("formulario de ingresos", () => {
       body: expect.stringContaining('"title":"Honorarios"'),
     }));
     expect(await screen.findByRole("link", { name: "Ver ingreso" })).toBeTruthy();
+    expect(screen.getByText("$900,25")).toBeTruthy();
     expect((screen.getByLabelText("Detalle") as HTMLInputElement).value).toBe("Sueldo");
     expect((screen.getByLabelText("Importe") as HTMLInputElement).value).toBe("");
   });

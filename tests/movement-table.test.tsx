@@ -27,7 +27,7 @@ describe("tabla de movimientos", () => {
     expect(container.textContent).toContain("Almuerzo");
     expect(container.textContent).toContain("Ingresado");
     expect(container.textContent).toContain("Itaú pesos → Billetera");
-    expect(container.textContent).toContain("UYU 500.00 → UYU 500.00");
+    expect(container.textContent).toContain("$500,00 → $500,00");
   });
 
   it("abre el lápiz en un popup de edición y permite cancelar sin enviar cambios", async () => {

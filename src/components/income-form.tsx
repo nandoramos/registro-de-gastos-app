@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { currentExpenseDateTime } from "@/components/expense-fields";
 import { IncomeFields, incomeErrorMessages, useIncomeFields } from "@/components/income-fields";
 import { SavePendingButton } from "@/components/save-pending-button";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 type CreatedIncome = { id: string; title: string; amount: string; currency: "UYU" | "USD" };
 
@@ -63,7 +64,7 @@ export function IncomeForm({ accounts }: { accounts: AccountView[] }) {
         {created ? <>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-800">Ingreso registrado</p>
           <h2 className="mt-3 text-xl font-semibold">{created.title}</h2>
-          <p className="mt-2 text-stone-600">{created.currency} {created.amount}</p>
+          <p className="mt-2 text-stone-600">{formatMoneyAmount(created.currency, created.amount)}</p>
           <Link href={"/privado/ingresos/" + created.id} className="mt-6 inline-flex min-h-12 items-center text-sm font-semibold text-emerald-900 underline underline-offset-4">Ver ingreso</Link>
         </> : <>
           <h2 className="font-semibold">Registro directo</h2>

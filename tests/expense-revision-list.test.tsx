@@ -55,4 +55,39 @@ describe("historial visible de correcciones", () => {
     expect(revision).toContain("Categoría: Alimentación → Salud");
     expect(screen.queryByText(/Importe/)).toBeNull();
   });
+
+  it("muestra cada importe con la moneda de su versión", () => {
+    render(
+      <ExpenseRevisionList
+        accounts={[]}
+        categories={[]}
+        history={[{
+          id: "revision-amount",
+          changedAt: new Date("2026-10-20T12:00:00Z"),
+          previous: {
+            operationDate: "2026-10-18",
+            operationTime: null,
+            title: "Compra",
+            note: null,
+            accountId: "account-1",
+            categoryId: "food",
+            amount: "1234.50",
+            currency: "UYU",
+          },
+          current: {
+            operationDate: "2026-10-18",
+            operationTime: null,
+            title: "Compra",
+            note: null,
+            accountId: "account-1",
+            categoryId: "food",
+            amount: "100.25",
+            currency: "USD",
+          },
+        }]}
+      />,
+    );
+
+    expect(screen.getByRole("listitem").textContent).toContain("Importe: $1.234,50 → U$S 100,25");
+  });
 });

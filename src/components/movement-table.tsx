@@ -12,6 +12,7 @@ import { TransferForm } from "@/components/transfer-form";
 import { ConversionEditForm } from "@/components/conversion-edit-form";
 import { AdjustmentEditForm } from "@/components/adjustment-edit-form";
 import { MovementStatusActions } from "@/components/movement-status-actions";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 type SelectedMovement = { movement: MovementHistoryItem; detail?: Record<string, unknown> };
 const apiTypes: Record<MovementHistoryItem["type"], string> = { expense: "expenses", income: "incomes", transfer: "transfers", withdrawal: "transfers", conversion: "conversions", adjustment: "adjustments" };
@@ -20,9 +21,9 @@ function isTwoSided(movement: MovementHistoryItem): movement is Extract<Movement
 function statusType(movement: MovementHistoryItem): MovementType { return movement.type === "withdrawal" ? "transfer" : movement.type; }
 
 function amountLabel(movement: MovementHistoryItem) {
-  if (isTwoSided(movement)) return `${movement.source.currency} ${movement.source.amount} → ${movement.destination.currency} ${movement.destination.amount}`;
+  if (isTwoSided(movement)) return `${formatMoneyAmount(movement.source.currency, movement.source.amount)} → ${formatMoneyAmount(movement.destination.currency, movement.destination.amount)}`;
   const sign = movement.type === "income" || movement.type === "adjustment" && movement.direction === "increase" ? "+" : "−";
-  return `${sign} ${movement.currency} ${movement.amount}`;
+  return `${sign} ${formatMoneyAmount(movement.currency, movement.amount)}`;
 }
 function accountLabel(movement: MovementHistoryItem) {
   return isTwoSided(movement) ? `${movement.source.account} → ${movement.destination.account}` : movement.account;

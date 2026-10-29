@@ -68,8 +68,8 @@ it.each([["escritorio", 1440], ["móvil", 390]] as const)("recorre Inicio y el d
 
   const home = await PrivateHome();
   const homeView = render(home);
-  expect(screen.getByText("UYU 225.00")).toBeTruthy();
-  expect(screen.getByText("USD 0.00")).toBeTruthy();
+  expect(screen.getByText("$225,00")).toBeTruthy();
+  expect(screen.getByText("U$S 0,00")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Pendientes de revisión (1)" }).getAttribute("href")).toBe("/privado/pendientes");
   const detailLink = screen.getByRole("link", { name: "Ver movimientos que forman estos gastos" });
   expect(detailLink.getAttribute("href")).toContain("spending=true");

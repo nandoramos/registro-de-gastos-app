@@ -14,8 +14,8 @@ it("muestra gastos por moneda, el acceso a sus movimientos y los pendientes glob
   />);
 
   expect(screen.getByRole("heading", { name: "Buen día, Totei" })).toBeTruthy();
-  expect(screen.getByText("UYU 125.50")).toBeTruthy();
-  expect(screen.getByText("USD 0.00")).toBeTruthy();
+  expect(screen.getByText("$125,50")).toBeTruthy();
+  expect(screen.getByText("U$S 0,00")).toBeTruthy();
   const expensesLink = screen.getByRole("link", { name: "Ver movimientos que forman estos gastos" });
   expect(expensesLink.getAttribute("href")).toBe("/privado/historial?month=2026-10&type=expense&type=adjustment&spending=true");
   expect(screen.getByRole("link", { name: "Pendientes de revisión (3)" }).getAttribute("href")).toBe("/privado/pendientes");

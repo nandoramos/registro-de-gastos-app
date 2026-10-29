@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { expenseWouldOverdraw } from "@/modules/expenses/domain";
 import { SavePendingButton } from "@/components/save-pending-button";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 type CreatedExpense = {
   id: string;
@@ -116,7 +117,7 @@ export function ExpenseForm({
             </p>
             <h2 className="mt-3 text-xl font-semibold">{created.title}</h2>
             <p className="mt-2 text-stone-600">
-              {created.currency} {created.amount}
+              {formatMoneyAmount(created.currency, created.amount)}
             </p>
             <Link
               href={"/privado/gastos/" + created.id}

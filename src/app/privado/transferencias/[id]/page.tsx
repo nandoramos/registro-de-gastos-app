@@ -7,6 +7,7 @@ import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
 import { getTransferDetail } from "@/modules/transfers/service";
+import { formatMoneyAmount } from "@/modules/money/format";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function TransferDetailPage({
             </dt>
             <dd className="mt-1 font-medium">{transfer.source.account.name}</dd>
             <dd className="text-lg font-semibold">
-              {transfer.source.currency} {transfer.source.amount}
+              {formatMoneyAmount(transfer.source.currency, transfer.source.amount)}
             </dd>
           </div>
           <div>
@@ -69,7 +70,7 @@ export default async function TransferDetailPage({
               {transfer.destination.account.name}
             </dd>
             <dd className="text-lg font-semibold">
-              {transfer.destination.currency} {transfer.destination.amount}
+              {formatMoneyAmount(transfer.destination.currency, transfer.destination.amount)}
             </dd>
           </div>
           {transfer.note && (

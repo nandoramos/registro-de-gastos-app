@@ -15,9 +15,9 @@ describe("formulario de ajuste manual", () => {
     expect((screen.getByLabelText("Cuenta") as HTMLSelectElement).value).toBe("");
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Cuenta"), "itau");
-    expect(screen.getByText((_, element) => element?.tagName === "P" && element.textContent?.includes("UYU 9500.00") === true)).toBeTruthy();
+    expect(screen.getByText((_, element) => element?.tagName === "P" && element.textContent?.includes("$9.500,00") === true)).toBeTruthy();
     await user.type(screen.getByLabelText("Saldo que muestra el banco o efectivo"), "9000");
-    expect(screen.getByText(/−UYU 500.00/)).toBeTruthy();
+    expect(screen.getByText(/− \$500,00/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Registrar ajuste" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
