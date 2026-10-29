@@ -48,7 +48,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   };
   const movements = await listMovementHistory(db, access.userId, filters);
   const summary = summarizeMovementHistory(movements);
-  const pendingEntries = filterPendingHistory(allPending, { month, startDate, endDate, accountIds, categoryIds: effectiveCategoryIds, types, currencies, status, search: one(raw.search), includeHouse, houseMode, houseCategoryId: houseCategory?.id });
+  const pendingEntries = spendingOnly ? [] : filterPendingHistory(allPending, { month, startDate, endDate, accountIds, categoryIds: effectiveCategoryIds, types, currencies, status, search: one(raw.search), includeHouse, houseMode, houseCategoryId: houseCategory?.id });
   const activeSummary = [
     startDate || endDate ? `${startDate ?? "Inicio"} – ${endDate ?? "Hoy"}` : month,
     accountIds.length ? `${accountIds.length} cuenta(s)` : "",
