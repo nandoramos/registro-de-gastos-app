@@ -18,7 +18,6 @@ const primary = [
 ];
 const existing = [
   { label: "Pendientes", href: "/privado/pendientes" },
-  { label: "Registrar conversión", href: "/privado/conversiones/nueva" },
   { label: "Resumen mensual", href: "/privado/resumen" },
   { label: "Ingresar texto de email", href: "/privado/emails/nuevo" },
   { label: "Probar interpretación", href: "/privado/probar-interpretacion" },

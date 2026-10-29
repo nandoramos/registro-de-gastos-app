@@ -94,6 +94,7 @@ export async function getConversionDetail<T extends PgQueryResultHKT>(
     .select({
       id: schema.financialAccount.id,
       name: schema.financialAccount.name,
+      kind: schema.financialAccount.kind,
       currency: schema.financialAccount.currency,
     })
     .from(schema.financialAccount)
@@ -123,6 +124,7 @@ export async function getConversionDetail<T extends PgQueryResultHKT>(
     },
     effectiveRate: row.effectiveRate,
     effectiveRateDisplay: displayEffectiveRate(row.effectiveRate),
+    withdrawal: sourceAccount.kind === "bank" && destinationAccount.kind === "cash",
     institution:
       row.institutionKind && row.institutionName
         ? { kind: row.institutionKind, name: row.institutionName }

@@ -5,14 +5,20 @@ import { TransferForm } from "@/components/transfer-form";
 import { listAccounts } from "@/modules/accounts/service";
 import { requireAuthorizedPage } from "@/modules/auth/page";
 import { getAuthRuntime } from "@/modules/auth/server";
+import { getQuoteSettings } from "@/modules/settings/service";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewTransferPage() {
   const access = await requireAuthorizedPage();
   let accounts;
+  let quoteSettings;
   try {
-    accounts = (await listAccounts(getAuthRuntime().db, access.userId)).filter((account) => account.openingBalance != null);
+    const db = getAuthRuntime().db;
+    [accounts, quoteSettings] = await Promise.all([
+      listAccounts(db, access.userId).then((items) => items.filter((account) => account.openingBalance != null)),
+      getQuoteSettings(db, access.userId),
+    ]);
   } catch {
     redirect("/login?error=unavailable");
   }
@@ -45,7 +51,7 @@ export default async function NewTransferPage() {
           </p>
         ) : (
           <div className="mt-10">
-            <TransferForm accounts={accounts} />
+            <TransferForm accounts={accounts} quoteSettings={quoteSettings} />
           </div>
         )}
       </div>

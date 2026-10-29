@@ -44,7 +44,7 @@ export default async function ConversionDetailPage({
         {conversion.voidedAt && <p className="mt-3 font-medium text-amber-800">Este movimiento está anulado.</p>}
         <div className="mt-6"><MovementStatusActions type="conversion" id={conversion.id} voided={Boolean(conversion.voidedAt)} /></div>
         <p className="mt-3 text-stone-600">
-          {conversion.operationDate} · No participa en los totales de gastos.
+          {conversion.operationDate} · {conversion.withdrawal ? "Retiro y conversión" : "Conversión"}; no participa en los totales de gastos.
         </p>
         <dl className="mt-8 grid gap-5 rounded-2xl border bg-white p-6 shadow-sm sm:grid-cols-2">
           <div>

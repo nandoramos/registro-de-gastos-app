@@ -4,6 +4,8 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import * as schema from "@/db/schema";
 import { listAccounts } from "@/modules/accounts/service";
+import { listMovementHistory } from "@/modules/movements/history";
+import { monthlySummary } from "@/modules/summary/service";
 import { pendingEntryResourceResponse } from "@/modules/pending-entries/http";
 import {
   conversionResourceResponse,
@@ -79,6 +81,9 @@ beforeEach(async () => {
       kind: "bank",
       currency: "UYU",
     },
+    { id: "owner-cash", userId: "conversion-owner", name: "Billetera", kind: "cash", currency: "UYU" },
+    { id: "owner-usd-alt", userId: "conversion-owner", name: "Cuenta dólares alterna", kind: "bank", currency: "USD" },
+    { id: "owner-cash-alt", userId: "conversion-owner", name: "Cajoncete pesos", kind: "cash", currency: "UYU" },
     {
       id: "other-uyu",
       userId: "conversion-other",
@@ -130,6 +135,48 @@ describe("conversiones USD y UYU", () => {
     const balances = await listAccounts(db, "conversion-owner");
     expect(balances.find((account) => account.id === "owner-usd")?.balance).toBe("-12.50");
     expect(balances.find((account) => account.id === "owner-uyu")?.balance).toBe("510.00");
+    expect(await db.select().from(schema.currencyConversion)).toHaveLength(1);
+  });
+
+  it("clasifica banco a efectivo como conversión y retiro, conserva la edición y excluye ambos lados de gastos e ingresos", async () => {
+    const created = await conversionsCollectionResponse(request("/api/conversions", "POST", {
+      ...completeConversion,
+      sourceAmount: "100.00",
+      destinationAmount: "4050.00",
+      destinationAccountId: "owner-cash",
+      destinationCurrency: "UYU",
+      quote: "40.50",
+    }), db, ownerAccess);
+    expect(created.status).toBe(201);
+    const conversion = await created.json();
+    expect(conversion.withdrawal).toBe(true);
+
+    const edited = await conversionResourceResponse(request(`/api/conversions/${conversion.id}`, "PATCH", {
+      operationDate: "2026-10-27",
+      title: "Cambio y retiro editado",
+      note: "Importes reales",
+      sourceAccountId: "owner-usd-alt",
+      destinationAccountId: "owner-cash-alt",
+      sourceAmount: "100.00",
+      destinationAmount: "4000.00",
+      institutionKind: "prex",
+      institutionName: "",
+    }), conversion.id, db, ownerAccess);
+    expect(edited.status).toBe(200);
+    expect((await edited.json()).withdrawal).toBe(true);
+    expect(await db.select().from(schema.currencyConversion)).toHaveLength(1);
+    expect(await db.select().from(schema.ownTransfer)).toHaveLength(0);
+    expect(await db.select().from(schema.expense)).toHaveLength(0);
+    expect(await db.select().from(schema.income)).toHaveLength(0);
+
+    const balances = await listAccounts(db, "conversion-owner");
+    expect(balances.find((account) => account.id === "owner-usd")?.balance).toBe("0.00");
+    expect(balances.find((account) => account.id === "owner-cash")?.balance).toBe("0.00");
+    expect(balances.find((account) => account.id === "owner-usd-alt")?.balance).toBe("-100.00");
+    expect(balances.find((account) => account.id === "owner-cash-alt")?.balance).toBe("4000.00");
+    const history = await listMovementHistory(db, "conversion-owner", { month: "2026-10", types: ["withdrawal"] });
+    expect(history).toEqual([expect.objectContaining({ id: conversion.id, type: "conversion", withdrawal: true, source: expect.objectContaining({ accountId: "owner-usd-alt", currency: "USD", amount: "100.00" }), destination: expect.objectContaining({ accountId: "owner-cash-alt", currency: "UYU", amount: "4000.00" }) })]);
+    expect(await monthlySummary(db, "conversion-owner", "2026-10")).toEqual({ totals: [], incomeTotals: [], categories: [] });
   });
 
   it("mantiene pendiente el destino sin confirmar y permite completarlo", async () => {

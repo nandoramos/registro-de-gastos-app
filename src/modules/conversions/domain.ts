@@ -67,16 +67,17 @@ export type ConversionDetail = Omit<
   id: string;
   voidedAt: Date | null;
   source: {
-    account: { id: string; name: string; currency: AccountCurrency };
+    account: { id: string; name: string; kind: "bank" | "cash"; currency: AccountCurrency };
     amount: string;
     currency: AccountCurrency;
   };
   destination: {
-    account: { id: string; name: string; currency: AccountCurrency };
+    account: { id: string; name: string; kind: "bank" | "cash"; currency: AccountCurrency };
     amount: string;
     currency: AccountCurrency;
   };
   effectiveRateDisplay: string;
+  withdrawal: boolean;
   institution: { kind: ConversionInstitutionKind; name: string } | null;
   evidence: {
     type: "manual" | "email";

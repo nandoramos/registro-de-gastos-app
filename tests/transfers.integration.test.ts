@@ -6,6 +6,7 @@ import * as schema from "@/db/schema";
 import { listAccounts } from "@/modules/accounts/service";
 import { changeMovementStatus } from "@/modules/movements/status";
 import { listMovementHistory } from "@/modules/movements/history";
+import { monthlySummary } from "@/modules/summary/service";
 import { pendingEntryResourceResponse } from "@/modules/pending-entries/http";
 import {
   transferResourceResponse,
@@ -223,6 +224,10 @@ describe("transferencias propias y retiros", () => {
     expect(response.status).toBe(201);
     expect((await response.json()).kind).toBe("withdrawal");
     expect(await db.select().from(schema.expense)).toHaveLength(0);
+    const balances = await listAccounts(db, "transfer-owner");
+    expect(balances.find((account) => account.id === "owner-bank-a")?.balance).toBe("-1500.25");
+    expect(balances.find((account) => account.id === "owner-cash")?.balance).toBe("1500.25");
+    expect(await monthlySummary(db, "transfer-owner", "2026-10")).toEqual({ totals: [], incomeTotals: [], categories: [] });
     const transfer = await transfersCollectionResponse(
       request("/api/transfers", "POST", completeTransfer), db, ownerAccess,
     );

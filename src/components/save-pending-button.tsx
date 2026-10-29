@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function SavePendingButton({ entryType, draft }: { entryType: "expense" | "income" | "own-transfer"; draft: Record<string, unknown> }) {
+export function SavePendingButton({ entryType, draft }: { entryType: "expense" | "income" | "own-transfer" | "conversion"; draft: Record<string, unknown> }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);

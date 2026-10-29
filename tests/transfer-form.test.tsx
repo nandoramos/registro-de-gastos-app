@@ -37,6 +37,18 @@ const accounts = [
     kind: "cash" as const,
     currency: "UYU" as const,
   },
+  {
+    id: "bank-usd",
+    name: "Prex dólares",
+    kind: "bank" as const,
+    currency: "USD" as const,
+  },
+  {
+    id: "cash-usd",
+    name: "Cajoncete dólares",
+    kind: "cash" as const,
+    currency: "USD" as const,
+  },
 ];
 
 describe("formulario de transferencias propias", () => {
@@ -90,14 +102,57 @@ describe("formulario de transferencias propias", () => {
     );
   });
 
-  it("sugiere Billetera como destino al elegir retiro y permite elegir otra cuenta de efectivo", async () => {
+  it("clasifica el destino en efectivo como retiro y permite elegir otra cuenta de efectivo", async () => {
     const user = userEvent.setup();
     render(<TransferForm accounts={accounts} />);
-    await user.selectOptions(screen.getByLabelText("Tipo de operación"), "withdrawal");
-    expect((screen.getByLabelText("Cuenta de destino") as HTMLSelectElement).value).toBe("cash");
+    await user.selectOptions(screen.getByLabelText("Cuenta de destino"), "cash");
+    expect(screen.getByText("Retiro")).toBeTruthy();
     expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Retiro: Banco A → Billetera");
     await user.selectOptions(screen.getByLabelText("Cuenta de destino"), "cash-other");
     expect((screen.getByLabelText("Cuenta de destino") as HTMLSelectElement).value).toBe("cash-other");
+  });
+
+  it("clasifica banco a efectivo como retiro sin restringir la cuenta de destino", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "withdrawal-1", kind: "withdrawal" }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<TransferForm accounts={accounts} />);
+    await user.selectOptions(screen.getByLabelText("Cuenta de destino"), "cash");
+    expect(screen.getByRole("button", { name: "Registrar retiro" })).toBeTruthy();
+    await user.type(screen.getByLabelText("Importe"), "250");
+    await user.click(screen.getByRole("button", { name: "Registrar retiro" }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/transfers", expect.objectContaining({
+      body: expect.stringContaining('"kind":"withdrawal"'),
+    }));
+  });
+
+  it("registra una conversión con dos importes editables y clasifica banco a efectivo como retiro también", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "conversion-1" }, { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<TransferForm accounts={accounts} />);
+    await user.selectOptions(screen.getByLabelText("Cuenta de origen"), "bank-usd");
+    await user.selectOptions(screen.getByLabelText("Cuenta de destino"), "cash");
+
+    expect(screen.getByText("Conversión y retiro")).toBeTruthy();
+    await user.type(screen.getByLabelText("Importe debitado"), "100");
+    await user.type(screen.getByLabelText("Importe acreditado"), "4050");
+    await user.click(screen.getByLabelText("Confirmé el importe acreditado real"));
+    await user.click(screen.getByRole("button", { name: "Registrar conversión y retiro" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/conversions", expect.objectContaining({
+      method: "POST",
+      body: expect.stringContaining('"sourceAmount":"100"'),
+    }));
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual(expect.objectContaining({
+      sourceAccountId: "bank-usd",
+      destinationAccountId: "cash",
+      sourceAmount: "100",
+      destinationAmount: "4050",
+      sourceCurrency: "USD",
+      destinationCurrency: "UYU",
+      destinationConfirmed: true,
+    }));
   });
 
   it("enlaza una carga incompleta con su revisión pendiente", async () => {
