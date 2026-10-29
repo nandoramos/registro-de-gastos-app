@@ -19,7 +19,21 @@ afterEach(() => {
 describe("gestión de cuentas", () => {
   it("ofrece abrir la actividad de la cuenta incluyendo Casa Nueva", () => {
     render(<AccountsManager initialAccounts={[{ id: "itau-uyu", name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "100.00", openingDate: "2026-01-01" }]} />);
-    expect(screen.getByRole("link", { name: "Ver movimientos de esta cuenta" }).getAttribute("href")).toBe("/privado/historial?accountId=itau-uyu&includeHouse=true");
+    expect(screen.getByRole("link", { name: "Ver movimientos de Itaú pesos" }).getAttribute("href")).toBe("/privado/historial?accountId=itau-uyu&includeHouse=true");
+    expect(screen.getByRole("link", { name: "Ver movimientos de Itaú pesos" }).querySelector("svg")).toBeTruthy();
+  });
+  it("prioriza las cinco cuentas frecuentes y ordena alfabéticamente las demás", () => {
+    render(<AccountsManager initialAccounts={[
+      { id: "prex", name: "Prex dólares", kind: "bank", currency: "USD", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "zeta", name: "Zeta", kind: "bank", currency: "UYU", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "itau-usd", name: "Itaú dólares", kind: "bank", currency: "USD", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "wallet", name: "Billetera", kind: "cash", currency: "UYU", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "itau-uyu", name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "santander", name: "Santander dólares", kind: "bank", currency: "USD", openingBalance: "1.00", openingDate: "2026-01-01" },
+      { id: "alfa", name: "Alfa", kind: "bank", currency: "UYU", openingBalance: "1.00", openingDate: "2026-01-01" },
+    ]} />);
+    const names = screen.getAllByRole("listitem").map((item) => item.querySelector(".font-semibold")?.textContent);
+    expect(names).toEqual(["Itaú pesos", "Billetera", "Itaú dólares", "Santander dólares", "Prex dólares", "Alfa", "Zeta"]);
   });
   it("ofrece preparar la cuenta Billetera en pesos sin inventar su saldo", async () => {
     const user = userEvent.setup();
@@ -35,8 +49,8 @@ describe("gestión de cuentas", () => {
       { id: "b", name: "Sin saldo", kind: "bank", currency: "USD", openingBalance: null, openingDate: null },
     ]} />);
     expect(screen.getByText(/total general está incompleto/i)).toBeTruthy();
-    expect(screen.getByText(/total UYU: \$100,20/i)).toBeTruthy();
-    expect(screen.getByText(/total estimado en USD: incompleto/i)).toBeTruthy();
+    expect(screen.getByText("Total UYU:").parentElement?.textContent).toContain("$100,20");
+    expect(screen.getByText("Total estimado en USD:").parentElement?.textContent).toContain("Incompleto");
   });
   it("estima el total en USD a cotización de venta e incluye cuentas en efectivo", () => {
     render(<AccountsManager
@@ -46,10 +60,12 @@ describe("gestión de cuentas", () => {
       ]}
       quoteSettings={{ buyRate: "39.00", sellRate: "40.00" }}
     />);
-    expect(screen.getByText(/total UYU: \$2\.000,00/i)).toBeTruthy();
-    expect(screen.getByText(/total USD: U\$S 50,00/i)).toBeTruthy();
-    expect(screen.getByText(/total estimado en USD: U\$S 100,00/i)).toBeTruthy();
-    expect(screen.getByText(/cotización de venta: 40,00/i)).toBeTruthy();
+    expect(screen.getByText("Total UYU:").parentElement?.textContent).toContain("$2.000,00");
+    expect(screen.getByText("Total USD:").parentElement?.textContent).toContain("U$S 50,00");
+    expect(screen.getByText("Total estimado en USD:").parentElement?.textContent).toContain("U$S 100,00");
+    expect(screen.getByText(/al tipo de venta: 40,00 UYU\/USD/i)).toBeTruthy();
+    expect(screen.queryByText(/incluye cuentas bancarias y efectivo/i)).toBeNull();
+    expect(screen.queryByText(/Cada cuenta tiene una sola moneda/i)).toBeNull();
   });
   it("incluye saldos archivados en totales aunque oculte las cuentas", () => {
     const archivedAt = new Date("2026-10-01T00:00:00Z");
@@ -62,8 +78,8 @@ describe("gestión de cuentas", () => {
       quoteSettings={{ buyRate: "45.00", sellRate: "50.00" }}
     />);
     expect(screen.queryByText("Cuenta archivada")).toBeNull();
-    expect(screen.getByText(/total UYU: \$150,00/i)).toBeTruthy();
-    expect(screen.getByText(/total estimado en USD: U\$S 28,00/i)).toBeTruthy();
+    expect(screen.getByText("Total UYU:").parentElement?.textContent).toContain("$150,00");
+    expect(screen.getByText("Total estimado en USD:").parentElement?.textContent).toContain("U$S 28,00");
   });
   it("muestra cuentas archivadas y permite recuperarlas", async () => {
     const user = userEvent.setup();
@@ -72,8 +88,8 @@ describe("gestión de cuentas", () => {
     render(<AccountsManager initialAccounts={[account]} />);
     expect(screen.queryByText("Cuenta anterior")).toBeNull();
     await user.click(screen.getByLabelText("Mostrar archivadas"));
-    await user.click(screen.getByRole("button", { name: "Desarchivar" }));
-    expect(await screen.findByRole("button", { name: "Archivar" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Desarchivar Cuenta anterior" }));
+    expect(await screen.findByRole("button", { name: "Archivar Cuenta anterior" })).toBeTruthy();
   });
   it("permite configurar el saldo inicial de una cuenta existente sin asumir cero", async () => {
     const user = userEvent.setup();
@@ -152,7 +168,7 @@ describe("gestión de cuentas", () => {
         ]}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Renombrar" }));
+    await user.click(screen.getByRole("button", { name: "Renombrar Itaú" }));
     const accountRow = within(screen.getByRole("listitem"));
     expect(accountRow.queryByLabelText("Tipo")).toBeNull();
     expect(accountRow.queryByLabelText("Moneda")).toBeNull();

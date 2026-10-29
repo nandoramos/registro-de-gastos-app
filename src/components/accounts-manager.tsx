@@ -47,6 +47,21 @@ function errorMessage(error?: string) {
   return "No pudimos guardar el cambio. Intentá nuevamente.";
 }
 
+function sortAccountsForDisplay(accounts: AccountView[]) {
+  const priority = ["itau pesos", "billetera", "itau dolares", "santander dolares", "prex dolares"];
+  const normalizedName = (name: string) => name.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("es-UY");
+  return [...accounts].sort((a, b) => {
+    const aPriority = priority.indexOf(normalizedName(a.name));
+    const bPriority = priority.indexOf(normalizedName(b.name));
+    if (aPriority >= 0 || bPriority >= 0) {
+      if (aPriority < 0) return 1;
+      if (bPriority < 0) return -1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+    }
+    return a.name.localeCompare(b.name, "es-UY", { sensitivity: "base" });
+  });
+}
+
 export function AccountsManager({
   initialAccounts,
   quoteSettings = DEFAULT_QUOTE_SETTINGS,
@@ -54,7 +69,7 @@ export function AccountsManager({
   initialAccounts: AccountView[];
   quoteSettings?: QuoteSettings;
 }) {
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState(() => sortAccountsForDisplay(initialAccounts));
   const [showArchived, setShowArchived] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<AccountKind>("bank");
@@ -73,8 +88,7 @@ export function AccountsManager({
   const decimalCents = (total: bigint) => formatScaledInteger(total, 2);
   const totalUyuCents = balanceTotalCents("UYU");
   const totalUsdCents = balanceTotalCents("USD");
-  const activeAccounts = accounts.filter((account) => !account.archivedAt);
-  const totalIncomplete = activeAccounts.length === 0 || activeAccounts.some((account) => account.openingBalance == null);
+  const totalIncomplete = accounts.length === 0 || accounts.some((account) => account.openingBalance == null);
   const totalUsdEstimate = totalIncomplete ? undefined : calculateEstimatedUsdTotal(
     decimalCents(totalUyuCents),
     decimalCents(totalUsdCents),
@@ -94,7 +108,7 @@ export function AccountsManager({
       const body = (await response.json()) as AccountView & ApiError;
       if (!response.ok) throw new Error(body.error);
       setAccounts((current) =>
-        [...current, body].sort((a, b) => a.name.localeCompare(b.name, "es")),
+        sortAccountsForDisplay([...current, body]),
       );
       setName("");
       setOpeningBalance("");
@@ -120,9 +134,7 @@ export function AccountsManager({
       const body = (await response.json()) as AccountView & ApiError;
       if (!response.ok) throw new Error(body.error);
       setAccounts((current) =>
-        current
-          .map((item) => (item.id === body.id ? { ...item, ...body } : item))
-          .sort((a, b) => a.name.localeCompare(b.name, "es")),
+        sortAccountsForDisplay(current.map((item) => (item.id === body.id ? { ...item, ...body } : item))),
       );
       setEditingId(undefined);
       setEditingName("");
@@ -144,93 +156,63 @@ export function AccountsManager({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section aria-labelledby="accounts-title">
-        <h2 id="accounts-title" className="text-xl font-semibold">
-          Tus cuentas
-        </h2>
-        <label><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Mostrar archivadas</label>
-        {totalIncomplete && <p>El total general está incompleto: hay cuentas sin saldo inicial.</p>}
-        <p>Total UYU: {formatMoneyAmount("UYU", decimalCents(totalUyuCents))}</p>
-        <p>Total USD: {formatMoneyAmount("USD", decimalCents(totalUsdCents))}</p>
-        <p>Total estimado en USD: {totalUsdEstimate === undefined ? "Incompleto" : formatMoneyAmount("USD", totalUsdEstimate)}</p>
-        <p className="text-sm text-stone-600">Cotización de venta: {quoteSettings.sellRate.replace(".", ",")} UYU por USD. Incluye cuentas bancarias y efectivo.</p>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
-          Cada cuenta tiene una sola moneda. Configurá su saldo inicial para usarla en movimientos.
-        </p>
-        {accounts.length === 0 ? (
-          <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-6 text-sm text-stone-600">
-            Todavía no agregaste cuentas.
-          </p>
-        ) : (
-          <ul className="mt-6 space-y-3">
-            {accounts.filter((account) => showArchived || !account.archivedAt).map((account) => (
-              <li
-                key={account.id}
-                className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
-              >
-                {editingId === account.id ? (
-                  <form
-                    className="flex flex-col gap-3 sm:flex-row"
-                    onSubmit={(event) => rename(event, account)}
-                  >
-                    <label className="sr-only" htmlFor={`rename-${account.id}`}>
-                      Nuevo nombre
-                    </label>
-                    <input
-                      id={`rename-${account.id}`}
-                      className="min-h-12 min-w-0 flex-1 rounded-xl border border-stone-300 px-4 focus:border-emerald-800 focus:outline-none"
-                      value={editingName}
-                      maxLength={80}
-                      required
-                      onChange={(event) => setEditingName(event.target.value)}
-                    />
-                    <Button disabled={pending}>Guardar</Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => setEditingId(undefined)}
-                    >
-                      Cancelar
-                    </Button>
-                  </form>
-                ) : (
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{account.name}</p>
-                      <p className="mt-1 text-sm text-stone-600">
-                        {account.kind === "bank"
-                          ? "Cuenta bancaria"
-                          : "Efectivo"}{" "}
-                        · {account.currency}
-                      </p>
-                      <Link href={`/privado/historial?accountId=${encodeURIComponent(account.id)}&includeHouse=true`} className="mt-2 inline-block text-sm font-medium text-emerald-800 underline">Ver movimientos de esta cuenta</Link>
-                      {account.openingBalance != null ? <p>Saldo: {formatMoneyAmount(account.currency, account.balance ?? account.openingBalance)}</p> : <OpeningBalanceForm account={account} onSaved={(saved) => setAccounts((current) => current.map((item) => item.id === saved.id ? saved : item))} />}
+    <>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section aria-labelledby="accounts-title">
+          <h2 id="accounts-title" className="text-xl font-semibold">Tus cuentas</h2>
+          {accounts.length === 0 ? (
+            <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-6 text-sm text-stone-600">Todavía no agregaste cuentas.</p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {accounts.filter((account) => showArchived || !account.archivedAt).map((account) => (
+                <li key={account.id} className="rounded-xl border border-stone-200 bg-white p-3">
+                  {editingId === account.id ? (
+                    <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(event) => rename(event, account)}>
+                      <label className="sr-only" htmlFor={`rename-${account.id}`}>Nuevo nombre</label>
+                      <input id={`rename-${account.id}`} className="min-h-12 min-w-0 flex-1 rounded-xl border border-stone-300 px-4 focus:border-emerald-800 focus:outline-none" value={editingName} maxLength={80} required onChange={(event) => setEditingName(event.target.value)} />
+                      <Button disabled={pending}>Guardar</Button>
+                      <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(undefined)}>Cancelar</Button>
+                    </form>
+                  ) : <>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{account.name}</p>
+                        <p className="mt-0.5 text-xs text-stone-600">{account.kind === "bank" ? "Cuenta bancaria" : "Efectivo"} · {account.currency}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {account.openingBalance != null && <p aria-label={`Saldo de ${account.name}`} className="whitespace-nowrap text-sm font-medium tabular-nums">Saldo: {formatMoneyAmount(account.currency, account.balance ?? account.openingBalance)}</p>}
+                        <Link href={`/privado/historial?accountId=${encodeURIComponent(account.id)}&includeHouse=true`} aria-label={`Ver movimientos de ${account.name}`} title={`Ver movimientos de ${account.name}`} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-600 hover:bg-stone-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700">
+                          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                        </Link>
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditingId(account.id);
-                        setEditingName(account.name);
-                        setError(undefined);
-                      }}
-                    >
-                      Renombrar
-                    </Button>
-                    {account.archivedAt ? <Button variant="outline" disabled={pending} onClick={() => unarchive(account)}>Desarchivar</Button> : <Button variant="outline" disabled={pending} onClick={() => archive(account)}>Archivar</Button>}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                    {account.openingBalance == null && <OpeningBalanceForm account={account} onSaved={(saved) => setAccounts((current) => sortAccountsForDisplay(current.map((item) => item.id === saved.id ? saved : item)))} />}
+                    <div className="mt-2 flex justify-end gap-2">
+                      <Button type="button" variant="outline" aria-label={`Renombrar ${account.name}`} title={`Renombrar ${account.name}`} onClick={() => { setEditingId(account.id); setEditingName(account.name); setError(undefined); }} className="h-9 w-9 min-h-9 p-0">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4 4 16.5Z" /><path d="m14.8 5.7 3.5 3.5" /></svg>
+                      </Button>
+                      {account.archivedAt ? <Button type="button" variant="outline" disabled={pending} aria-label={`Desarchivar ${account.name}`} title={`Desarchivar ${account.name}`} onClick={() => unarchive(account)} className="h-9 w-9 min-h-9 p-0"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5" /><path d="M4 4v4.5h4.5" /></svg></Button> : <Button type="button" variant="outline" disabled={pending} aria-label={`Archivar ${account.name}`} title={`Archivar ${account.name}`} onClick={() => archive(account)} className="h-9 w-9 min-h-9 p-0"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M3 7h18M5 7l1 13h12l1-13M9 7V4h6v3M10 11v5m4-5v5" /></svg></Button>}
+                    </div>
+                  </>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm text-stone-600"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Mostrar archivadas</label>
+        </section>
 
-      <section
-        aria-labelledby="new-account-title"
-        className="h-fit rounded-2xl border border-stone-200 bg-white p-6 shadow-sm"
-      >
+        <aside aria-labelledby="accounts-summary-title" className="h-fit rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+          <h2 id="accounts-summary-title" className="text-lg font-semibold">Resumen de saldos</h2>
+          {totalIncomplete && <p className="mt-3 text-sm text-amber-800">El total general está incompleto: hay cuentas sin saldo inicial.</p>}
+          <dl className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between gap-4"><dt className="text-stone-600">Total UYU:</dt><dd className="font-semibold tabular-nums">{formatMoneyAmount("UYU", decimalCents(totalUyuCents))}</dd></div>
+            <div className="flex items-center justify-between gap-4"><dt className="text-stone-600">Total USD:</dt><dd className="font-semibold tabular-nums">{formatMoneyAmount("USD", decimalCents(totalUsdCents))}</dd></div>
+            <div className="border-t border-stone-200 pt-3"><div className="flex items-center justify-between gap-4"><dt className="font-medium">Total estimado en USD:</dt><dd className="text-base font-semibold tabular-nums">{totalUsdEstimate === undefined ? "Incompleto" : formatMoneyAmount("USD", totalUsdEstimate)}</dd></div><p className="mt-1 text-xs text-stone-500">Al tipo de venta: {quoteSettings.sellRate.replace(".", ",")} UYU/USD</p></div>
+          </dl>
+        </aside>
+      </div>
+
+      <section aria-labelledby="new-account-title" className="mt-8 max-w-3xl rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
         <h2 id="new-account-title" className="text-xl font-semibold">
           Agregar cuenta
         </h2>
@@ -288,6 +270,6 @@ export function AccountsManager({
           )}
         </form>
       </section>
-    </div>
+    </>
   );
 }

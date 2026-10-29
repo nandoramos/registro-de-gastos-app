@@ -37,10 +37,6 @@ export default async function AccountsPage() {
           Configuración
         </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight">Cuentas</h1>
-        <p className="mt-4 max-w-2xl leading-7 text-stone-600">
-          Identificá dónde mantenés tu dinero. Una cuenta bancaria o de efectivo
-          se configura por separado para cada moneda.
-        </p>
         <div className="mt-10">
           <AccountsManager initialAccounts={accounts} quoteSettings={quoteSettings} />
         </div>
