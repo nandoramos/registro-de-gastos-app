@@ -47,6 +47,20 @@ describe("gestión de cuentas", () => {
     expect(screen.getByText(/total estimado en USD: 100,00/i)).toBeTruthy();
     expect(screen.getByText(/cotización de venta: 40,00/i)).toBeTruthy();
   });
+  it("incluye saldos archivados en totales aunque oculte las cuentas", () => {
+    const archivedAt = new Date("2026-10-01T00:00:00Z");
+    render(<AccountsManager
+      initialAccounts={[
+        { id: "active-uyu", name: "Itaú pesos", kind: "bank", currency: "UYU", openingBalance: "100.00", openingDate: "2026-10-01", balance: "100.00" },
+        { id: "archived-uyu", name: "Cuenta archivada", kind: "bank", currency: "UYU", openingBalance: "50.00", openingDate: "2026-10-01", balance: "50.00", archivedAt },
+        { id: "usd", name: "Itaú dólares", kind: "bank", currency: "USD", openingBalance: "25.00", openingDate: "2026-10-01", balance: "25.00" },
+      ]}
+      quoteSettings={{ buyRate: "45.00", sellRate: "50.00" }}
+    />);
+    expect(screen.queryByText("Cuenta archivada")).toBeNull();
+    expect(screen.getByText(/total UYU: 150,00/i)).toBeTruthy();
+    expect(screen.getByText(/total estimado en USD: 28,00/i)).toBeTruthy();
+  });
   it("muestra cuentas archivadas y permite recuperarlas", async () => {
     const user = userEvent.setup();
     const account = { id: "old", name: "Cuenta anterior", kind: "bank" as const, currency: "UYU" as const, archivedAt: new Date(), openingBalance: "20.00", openingDate: "2026-10-28" };

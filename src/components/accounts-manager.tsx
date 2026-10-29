@@ -64,7 +64,7 @@ export function AccountsManager({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const balanceTotalCents = (currency: AccountCurrency) =>
-    accounts.filter((account) => !account.archivedAt && account.currency === currency && (account.balance ?? account.openingBalance) != null).reduce((sum, account) => {
+    accounts.filter((account) => account.currency === currency && (account.balance ?? account.openingBalance) != null).reduce((sum, account) => {
       const value = account.balance ?? account.openingBalance!;
       return sum + parseBalanceCents(value);
     }, 0n);
