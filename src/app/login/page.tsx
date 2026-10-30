@@ -15,7 +15,7 @@ export default async function Login({
           ↗
         </span>
         <span className="text-sm font-semibold tracking-tight">
-          Registro de Gastos
+          Registro de Gastos APP 
         </span>
       </header>
       <section className="mx-auto w-full max-w-md py-16">
