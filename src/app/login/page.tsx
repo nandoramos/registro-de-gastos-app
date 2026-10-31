@@ -1,4 +1,5 @@
 import { SignInButton } from "@/components/auth-buttons";
+import { AppLogo } from "@/components/app-logo";
 export default async function Login({
   searchParams,
 }: {
@@ -8,15 +9,7 @@ export default async function Login({
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col justify-between px-6 py-8 sm:px-12 sm:py-12">
       <header className="flex items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="flex size-10 items-center justify-center rounded-xl bg-emerald-900 text-xl text-white"
-        >
-          ↗
-        </span>
-        <span className="text-sm font-semibold tracking-tight">
-          Registro de Gastos APP 
-        </span>
+        <AppLogo width={264} />
       </header>
       <section className="mx-auto w-full max-w-md py-16">
         <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">

@@ -18,6 +18,13 @@ body {
   background: #d4e7d8;
 }
 
+.app-logo {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 85%)) drop-shadow(0 2px 6px rgb(255 255 255 / 20%));
+}
+
 .private-shell { min-height: 100dvh; display: flex; }
 .private-desktop { width: 256px; flex: none; background: #191a1e; color: #f1f0ec; }
 .private-content { min-width: 0; flex: 1; color-scheme: dark; background: #222329; color: #f1f0ec; font-family: Inter, system-ui, sans-serif; }

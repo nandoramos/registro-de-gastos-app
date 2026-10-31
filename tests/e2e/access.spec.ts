@@ -1,9 +1,22 @@
 import { expect, test } from "@playwright/test";
 
+test("la página publica un favicon válido para la pestaña del navegador", async ({ page }) => {
+  await page.goto("/login");
+  const icon = page.locator('head link[rel="icon"]');
+  await expect(icon).toHaveAttribute("href", /favicon\.ico/);
+  const response = await page.request.get((await icon.getAttribute("href"))!);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("image/");
+  expect([...(await response.body()).subarray(0, 4)]).toEqual([0, 0, 1, 0]);
+});
+
 test("la pantalla de acceso cabe en el viewport configurado", async ({
   page,
 }) => {
   await page.goto("/login");
+  const logo = page.getByRole("img", { name: "Registro de Gastos" });
+  await expect(logo).toBeVisible();
+  await expect.poll(() => logo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Entender tus gastos",
   );

@@ -4,6 +4,7 @@ import { NavigationLink as Link } from "@/components/navigation-link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { SignOutButton } from "@/components/auth-buttons";
+import { AppLogo } from "@/components/app-logo";
 
 const primary = [
   { label: "Inicio", href: "/privado" },
@@ -28,7 +29,7 @@ const existing = [
 function Menu({ name, close }: { name: string; close?: () => void }) {
   const pathname = usePathname();
   return <nav aria-label={name} className="private-nav">
-    <Link href="/privado" onClick={close} className="private-brand">Registro de Gastos</Link>
+    <Link href="/privado" onClick={close} className="private-brand"><AppLogo /></Link>
     <p className="private-nav-heading">Tu espacio</p>
     <ul className="private-nav-list">
       {primary.map((item) => <li key={item.label}>{item.href ? <Link loadingTitle={item.label} className="private-nav-link" href={item.href} onClick={close} aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link> : <span className="private-nav-unavailable">{item.label}<span>Próximamente</span></span>}</li>)}
@@ -51,7 +52,7 @@ export function PrivateNavigation() {
   return <>
     <aside className="private-desktop"><Menu name="Navegación principal" /></aside>
     <div className="private-mobile" onKeyDown={(event) => { if (event.key === "Escape" && open) close(); }}>
-      <header className="private-mobile-header"><span>Registro de Gastos</span><button ref={toggle} type="button" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button></header>
+      <header className="private-mobile-header"><AppLogo width={168} /><button ref={toggle} type="button" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>{open ? "✕" : "☰"}</button></header>
       <div id="mobile-navigation" hidden={!open}><Menu name="Menú móvil" close={close} /></div>
     </div>
   </>;

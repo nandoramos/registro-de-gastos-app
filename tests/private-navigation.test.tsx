@@ -8,6 +8,24 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/privado/cuentas" }));
 vi.mock("@/components/auth-buttons", () => ({ SignOutButton: () => <button>Cerrar sesión</button> }));
 afterEach(cleanup);
 
+it("muestra el logo en escritorio y móvil y permite volver al inicio desde el menú", async () => {
+  const user = userEvent.setup();
+  render(<PrivateNavigation />);
+  const desktop = screen.getByRole("navigation", { name: "Navegación principal" });
+  const home = within(desktop).getByRole("link", { name: "Registro de Gastos" });
+  expect(within(home).getByRole("img", { name: "Registro de Gastos" })).toBeTruthy();
+  expect(home.getAttribute("href")).toBe("/privado");
+  expect(within(screen.getByRole("banner")).getByRole("img", { name: "Registro de Gastos" })).toBeTruthy();
+
+  const toggle = screen.getByRole("button", { name: "Abrir menú" });
+  await user.click(toggle);
+  const mobile = screen.getByRole("navigation", { name: "Menú móvil" });
+  const mobileHome = within(mobile).getByRole("link", { name: "Registro de Gastos" });
+  expect(within(mobileHome).getByRole("img", { name: "Registro de Gastos" })).toBeTruthy();
+  await user.click(mobileHome);
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+});
+
 it("permite abrir el menú móvil y cerrarlo al elegir una pantalla existente", async () => {
   const user = userEvent.setup();
   render(<PrivateNavigation />);
