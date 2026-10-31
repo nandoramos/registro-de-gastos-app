@@ -314,7 +314,7 @@ export function TransferForm({
         <label className="flex items-center gap-3 rounded-xl bg-stone-100 p-4 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={destinationConfirmed} onChange={(event) => setDestinationConfirmed(event.target.checked)} className="size-5" />Confirmé el importe acreditado real</label>
       </>}
       <label className="text-sm font-medium sm:col-span-2">Nota (opcional)<textarea maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border px-4 py-3" /></label>
-      <div className="sm:col-span-2"><Button disabled={pending}>{pending ? "Guardando…" : entry ? "Guardar y registrar" : `Registrar ${isConversion ? isWithdrawal ? "conversión y retiro" : "conversión" : isWithdrawal ? "retiro" : "transferencia"}`}</Button>
+      <div className="flex flex-wrap items-start gap-3 sm:col-span-2"><Button disabled={pending}>{pending ? "Guardando…" : entry ? "Guardar y registrar" : `Registrar ${isConversion ? isWithdrawal ? "conversión y retiro" : "conversión" : isWithdrawal ? "retiro" : "transferencia"}`}</Button>
         {!entry && !existing && <SavePendingButton entryType={isConversion ? "conversion" : "own-transfer"} draft={isConversion ? { operationDate, title, note, sourceAccountId, destinationAccountId, sourceAmount, destinationAmount, sourceCurrency: sourceAccount?.currency, destinationCurrency: destinationAccount?.currency, destinationConfirmed, quote, institution: institution || null, otherInstitutionName } : { kind: isWithdrawal ? "withdrawal" : "transfer", operationDate, title, note, sourceAccountId, destinationAccountId, sourceAmount, destinationAmount: sourceAmount, currency: sourceAccount?.currency }} />}
       </div>
     </form>

@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { TransferForm } from "@/components/transfer-form";
+import { ExpenseForm } from "@/components/expense-form";
+import { IncomeForm } from "@/components/income-form";
 import { DEFAULT_QUOTE_SETTINGS } from "@/modules/settings/domain";
 
 const syntheticAccounts = [
@@ -11,16 +13,19 @@ const syntheticAccounts = [
 
 export const dynamic = "force-dynamic";
 
-export default async function SyntheticTransferPage() {
+export default async function SyntheticTransferPage({ searchParams }: { searchParams: Promise<{ form?: string }> }) {
   if (process.env.NODE_ENV !== "development") notFound();
   const session = (await cookies()).get("e2e_session")?.value;
   if (session !== "synthetic-transfer-user") notFound();
+  const { form } = await searchParams;
 
   return (
     <main className="mx-auto min-h-dvh max-w-5xl px-4 py-6 sm:px-10 sm:py-10">
       <p role="status" className="mb-4 text-xs text-stone-500">Sesión sintética de Playwright · datos ficticios</p>
-      <h1 className="mb-6 text-3xl font-semibold">Transferencia / retiro</h1>
-      <TransferForm accounts={syntheticAccounts} quoteSettings={DEFAULT_QUOTE_SETTINGS} />
+      <h1 className="mb-6 text-3xl font-semibold">{form === "expense" ? "Registrar gasto" : form === "income" ? "Registrar ingreso" : "Transferencia / retiro"}</h1>
+      {form === "expense" ? <ExpenseForm accounts={syntheticAccounts} categories={[{ id: "e2e-food", name: "Alimentación", systemKey: "food", archivedAt: null }]} />
+        : form === "income" ? <IncomeForm accounts={syntheticAccounts} />
+        : <TransferForm accounts={syntheticAccounts} quoteSettings={DEFAULT_QUOTE_SETTINGS} />}
     </main>
   );
 }

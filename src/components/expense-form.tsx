@@ -112,10 +112,12 @@ export function ExpenseForm({
             </p>
           )}
           {categoriesReady && fields.categoryId.value && !categoryValid && <p role="alert" className="mb-4 text-sm text-red-800">La categoría elegida ya no está disponible. Elegí otra categoría.</p>}
-          <Button disabled={pending || !selectedAccount || !categoryValid}>
-            {pending ? "Registrando…" : "Registrar gasto"}
-          </Button>
-          <SavePendingButton entryType="expense" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, categoryId: fields.categoryId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
+          <div className="flex flex-wrap items-start gap-3">
+            <Button disabled={pending || !selectedAccount || !categoryValid}>
+              {pending ? "Registrando…" : "Registrar gasto"}
+            </Button>
+            <SavePendingButton entryType="expense" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, categoryId: fields.categoryId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
+          </div>
           {error && !(categoriesReady && fields.categoryId.value && !categoryValid) && (
             <p role="alert" className="mt-4 text-sm text-red-800">
               {error}

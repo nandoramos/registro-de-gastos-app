@@ -56,8 +56,10 @@ export function IncomeForm({ accounts }: { accounts: AccountView[] }) {
       <form className="grid gap-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:grid-cols-2" onSubmit={submit}>
         <IncomeFields accounts={accounts} fields={fields} />
         <div className="sm:col-span-2">
-          <Button disabled={pending || !selectedAccount}>{pending ? "Registrando…" : "Registrar ingreso"}</Button>
-          <SavePendingButton entryType="income" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
+          <div className="flex flex-wrap items-start gap-3">
+            <Button disabled={pending || !selectedAccount}>{pending ? "Registrando…" : "Registrar ingreso"}</Button>
+            <SavePendingButton entryType="income" draft={{ operationDate: fields.operationDate.value, operationTime: fields.operationTime.value, title: fields.title.value, note: fields.note.value, accountId: fields.accountId.value, amount: fields.amount.value, currency: selectedAccount?.currency }} />
+          </div>
           {error && <p role="alert" className="mt-4 text-sm text-red-800">{error}</p>}
         </div>
       </form>
